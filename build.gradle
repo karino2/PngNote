@@ -6,10 +6,6 @@ buildscript {
     repositories {
         google()
         mavenCentral()
-        maven {
-            url "http://repo.boox.com/repository/maven-public/"
-            allowInsecureProtocol true
-        }
     }
     dependencies {
         classpath 'com.android.tools.build:gradle:7.0.0-rc01'

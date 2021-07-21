@@ -52,20 +52,6 @@ class CanvasBoox(context: Context, var initialBmp: Bitmap? = null) : SurfaceView
     private val touchHelper by lazy { TouchHelper.create(this, inputCallback) }
     private val layoutChangedListener : View.OnLayoutChangeListener by lazy {
         OnLayoutChangeListener { v, left, top, right, bottom, oldLeft, oldTop, oldRight, oldBottom ->
-
-            /**
-             * Called when the layout bounds of a view changes due to layout processing.
-             *
-             * @param v The view whose bounds have changed.
-             * @param left The new value of the view's left property.
-             * @param top The new value of the view's top property.
-             * @param right The new value of the view's right property.
-             * @param bottom The new value of the view's bottom property.
-             * @param oldLeft The previous value of the view's left property.
-             * @param oldTop The previous value of the view's top property.
-             * @param oldRight The previous value of the view's right property.
-             * @param oldBottom The previous value of the view's bottom property.
-             */
             /**
              * Called when the layout bounds of a view changes due to layout processing.
              *
