@@ -9,16 +9,39 @@ import com.onyx.android.sdk.pen.RawInputCallback
 import com.onyx.android.sdk.pen.TouchHelper
 import com.onyx.android.sdk.pen.data.TouchPoint
 import com.onyx.android.sdk.pen.data.TouchPointList
+import android.graphics.PointF
+import com.onyx.android.sdk.api.device.epd.EpdController
+import com.onyx.android.sdk.pen.BrushRender
+import com.onyx.android.sdk.utils.NumberUtils
 
 
 class CanvasBoox(context: Context, var initialBmp: Bitmap? = null) : SurfaceView(context) {
-    /*
-    lateinit var bitmap: Bitmap
-    private lateinit var bmpCanvas: Canvas
+    var bitmap: Bitmap? = null
+    private var bmpCanvas: Canvas? = null
     private var clearCount = 0
 
+    private val pencilWidth = 3f
+    private val eraserWidth = 50f
+
     private val bmpPaint = Paint(Paint.DITHER_FLAG)
-     */
+    private val pathPaint = Paint().apply {
+        isAntiAlias = true
+        // isDither = true
+        color = 0xFF000000.toInt()
+        style = Paint.Style.STROKE
+        // strokeJoin = Paint.Join.ROUND
+        // strokeCap = Paint.Cap.ROUND
+        strokeWidth = pencilWidth
+    }
+
+    private val eraserPaint = Paint().apply {
+        isAntiAlias = true
+        color = 0xFFFFFFFF.toInt()
+        style = Paint.Style.STROKE
+        strokeWidth = eraserWidth
+    }
+
+
 
     private var initCount = 0
 
@@ -32,7 +55,8 @@ class CanvasBoox(context: Context, var initialBmp: Bitmap? = null) : SurfaceView
         override fun onRawDrawingTouchPointMoveReceived(p0: TouchPoint?) {
         }
 
-        override fun onRawDrawingTouchPointListReceived(p0: TouchPointList?) {
+        override fun onRawDrawingTouchPointListReceived(plist: TouchPointList) {
+            drawPointsToBitmap(plist.points)
         }
 
         override fun onBeginRawErasing(p0: Boolean, p1: TouchPoint?) {
@@ -72,7 +96,7 @@ class CanvasBoox(context: Context, var initialBmp: Bitmap? = null) : SurfaceView
             val exclude = emptyList<Rect>()
             val limit = Rect()
             getLocalVisibleRect(limit)
-            touchHelper.setStrokeWidth(3f)
+            touchHelper.setStrokeWidth(pencilWidth)
                 .setLimitRect(limit, exclude)
                 .openRawDrawing()
             touchHelper.setStrokeStyle(TouchHelper.STROKE_STYLE_PENCIL)
@@ -135,10 +159,83 @@ class CanvasBoox(context: Context, var initialBmp: Bitmap? = null) : SurfaceView
         }
     }
 
+    private var refreshCount = 0
+    fun refreshUI(count: Int) {
+        if (count != refreshCount) {
+            refreshCount = count
+            bitmap?.let { bmp->
+                holder.lockCanvas()?.let { lockCanvas->
+                    lockCanvas.drawColor(Color.WHITE)
+                    lockCanvas.drawBitmap(bmp, 0f, 0f, bmpPaint)
+                    holder.unlockCanvasAndPost(lockCanvas)
+                }
+
+            }
+            touchHelper.setRawDrawingEnabled(false)
+            touchHelper.setRawDrawingEnabled(true)
+        }
+    }
+
+    private fun ensureBitmap() :Pair<Bitmap, Canvas> {
+        if(bitmap == null) {
+            bitmap = Bitmap.createBitmap(getWidth(), getHeight(), Bitmap.Config.ARGB_8888)
+            bmpCanvas = Canvas(bitmap!!)
+        }
+        return Pair(bitmap!!, bmpCanvas!!)
+    }
+
+    private fun drawPointsToBitmap(points: List<TouchPoint>) {
+        val (_, canvas) = ensureBitmap()
+
+        val paint = if(isPencil) pathPaint else eraserPaint
+        val path = Path()
+        val prePoint = PointF(points.get(0).x, points.get(0).y)
+        path.moveTo(prePoint.x, prePoint.y)
+        for (point in points) {
+            path.quadTo(prePoint.x, prePoint.y, point.x, point.y)
+            prePoint.x = point.x
+            prePoint.y = point.y
+        }
+        canvas.drawPath(path, paint)
+    }
+
     fun startPenRender() {
         touchHelper.setRawDrawingEnabled(true)
         touchHelper.isRawDrawingRenderEnabled = true
     }
+
+    private var isPencil = true
+    private val isEraser : Boolean
+        get() = !isPencil
+
+    private fun pencil() {
+        if (isPencil)
+            return
+        isPencil = true
+        touchHelper.setStrokeWidth(pencilWidth)
+            .setStrokeStyle(TouchHelper.STROKE_STYLE_PENCIL)
+            .setStrokeColor(Color.BLACK)
+    }
+
+    private fun eraser() {
+        if (isEraser)
+            return
+        isPencil = false
+        touchHelper.setStrokeWidth(eraserWidth)
+            .setStrokeStyle(TouchHelper.STROKE_STYLE_PENCIL)
+            .setStrokeColor(Color.WHITE)
+    }
+
+    fun penOrEraser(isPen: Boolean ) {
+        if(isPen == isPencil)
+            return
+        if (isPen) {
+            pencil()
+        } else {
+            eraser()
+        }
+    }
+
 
     private fun cleanSurfaceView(): Boolean {
         if (holder == null) {
