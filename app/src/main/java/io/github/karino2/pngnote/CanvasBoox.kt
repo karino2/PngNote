@@ -10,6 +10,7 @@ import com.onyx.android.sdk.pen.RawInputCallback
 import com.onyx.android.sdk.pen.TouchHelper
 import com.onyx.android.sdk.pen.data.TouchPoint
 import com.onyx.android.sdk.pen.data.TouchPointList
+import kotlin.math.abs
 
 
 class CanvasBoox(context: Context, var initialBmp: Bitmap? = null) : SurfaceView(context) {
@@ -54,6 +55,8 @@ class CanvasBoox(context: Context, var initialBmp: Bitmap? = null) : SurfaceView
 
         override fun onRawDrawingTouchPointListReceived(plist: TouchPointList) {
             drawPointsToBitmap(plist.points)
+            // for debug.
+            // drawBitmapToSurface()
         }
 
         override fun onBeginRawErasing(p0: Boolean, p1: TouchPoint?) {
@@ -94,6 +97,7 @@ class CanvasBoox(context: Context, var initialBmp: Bitmap? = null) : SurfaceView
             val limit = Rect()
             getLocalVisibleRect(limit)
             touchHelper.setStrokeWidth(pencilWidth)
+                .setStrokeColor(Color.BLACK)
                 .setLimitRect(limit, exclude)
                 .openRawDrawing()
             touchHelper.setStrokeStyle(TouchHelper.STROKE_STYLE_PENCIL)
@@ -139,6 +143,7 @@ class CanvasBoox(context: Context, var initialBmp: Bitmap? = null) : SurfaceView
          */
         override fun surfaceDestroyed(holder: SurfaceHolder) {
             holder.removeCallback(surfaceCallback)
+            touchHelper.closeRawDrawing()
         }
 
     } }
@@ -153,23 +158,6 @@ class CanvasBoox(context: Context, var initialBmp: Bitmap? = null) : SurfaceView
         if(callCount == 1 && initCount != 1) {
             initCount = 1
             startPenRender()
-        }
-    }
-
-    private var refreshCount = 0
-    fun refreshUI(count: Int) {
-        if (count != refreshCount) {
-            refreshCount = count
-            bitmap?.let { bmp->
-                holder.lockCanvas()?.let { lockCanvas->
-                    lockCanvas.drawColor(Color.WHITE)
-                    lockCanvas.drawBitmap(bmp, 0f, 0f, bmpPaint)
-                    holder.unlockCanvasAndPost(lockCanvas)
-                }
-
-            }
-            touchHelper.setRawDrawingEnabled(false)
-            touchHelper.setRawDrawingEnabled(true)
         }
     }
 
@@ -202,7 +190,18 @@ class CanvasBoox(context: Context, var initialBmp: Bitmap? = null) : SurfaceView
         onUpdate(targetBmp)
     }
 
-    fun startPenRender() {
+    private fun drawBitmapToSurface() {
+        val canvas: Canvas = holder.lockCanvas() ?: return
+        val (targetBmp, _) = ensureBitmap()
+        canvas.drawBitmap(targetBmp,
+            Rect(0, 0, targetBmp.width, targetBmp.height),
+            Rect(0, 0, width, height),
+            bmpPaint
+        )
+        holder.unlockCanvasAndPost(canvas)
+    }
+
+    private fun startPenRender() {
         touchHelper.setRawDrawingEnabled(true)
         touchHelper.isRawDrawingRenderEnabled = true
     }
@@ -211,22 +210,42 @@ class CanvasBoox(context: Context, var initialBmp: Bitmap? = null) : SurfaceView
     private val isEraser : Boolean
         get() = !isPencil
 
+
     private fun pencil() {
         if (isPencil)
             return
         isPencil = true
+
         touchHelper.setStrokeWidth(pencilWidth)
             .setStrokeStyle(TouchHelper.STROKE_STYLE_PENCIL)
             .setStrokeColor(Color.BLACK)
+
+        refreshUI()
     }
 
     private fun eraser() {
         if (isEraser)
             return
         isPencil = false
+
+
         touchHelper.setStrokeWidth(eraserWidth)
             .setStrokeStyle(TouchHelper.STROKE_STYLE_PENCIL)
             .setStrokeColor(Color.WHITE)
+
+        refreshUI()
+    }
+
+    private fun refreshUI() {
+        val (bmp, _) = ensureBitmap()
+        holder.lockCanvas()?.let { lockCanvas->
+            lockCanvas.drawColor(Color.WHITE)
+            lockCanvas.drawBitmap(bmp, 0f, 0f, bmpPaint)
+            holder.unlockCanvasAndPost(lockCanvas)
+        }
+
+        touchHelper.setRawDrawingEnabled(false)
+        touchHelper.setRawDrawingEnabled(true)
     }
 
     fun penOrEraser(isPen: Boolean ) {
@@ -253,14 +272,17 @@ class CanvasBoox(context: Context, var initialBmp: Bitmap? = null) : SurfaceView
             return false
         }
         val canvas: Canvas = holder.lockCanvas() ?: return false
-        val (targetBmp, _) = ensureBitmap()
+        val (targetBmp, bmpCanvas) = ensureBitmap()
         canvas.drawColor(Color.WHITE)
         initialBmp?.let {
             canvas.drawBitmap(it,
                 Rect(0, 0, it.width, it.height),
+                Rect(0, 0, width, height),
+                bmpPaint)
+            bmpCanvas.drawBitmap(it,
+                Rect(0, 0, it.width, it.height),
                 Rect(0, 0, targetBmp.width, targetBmp.height),
                 bmpPaint)
-            initialBmp = null
         }
         holder.unlockCanvasAndPost(canvas)
         onUpdate(targetBmp)
