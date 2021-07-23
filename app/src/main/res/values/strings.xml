@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">PngNote</string>
+    <string name="title_activity_book_list">BookListActivity</string>
 </resources>

@@ -5,14 +5,11 @@ import android.graphics.*
 import android.view.SurfaceHolder
 import android.view.SurfaceView
 import android.view.View
+import android.view.View.OnLayoutChangeListener
 import com.onyx.android.sdk.pen.RawInputCallback
 import com.onyx.android.sdk.pen.TouchHelper
 import com.onyx.android.sdk.pen.data.TouchPoint
 import com.onyx.android.sdk.pen.data.TouchPointList
-import android.graphics.PointF
-import com.onyx.android.sdk.api.device.epd.EpdController
-import com.onyx.android.sdk.pen.BrushRender
-import com.onyx.android.sdk.utils.NumberUtils
 
 
 class CanvasBoox(context: Context, var initialBmp: Bitmap? = null) : SurfaceView(context) {
@@ -178,14 +175,16 @@ class CanvasBoox(context: Context, var initialBmp: Bitmap? = null) : SurfaceView
 
     private fun ensureBitmap() :Pair<Bitmap, Canvas> {
         if(bitmap == null) {
-            bitmap = Bitmap.createBitmap(getWidth(), getHeight(), Bitmap.Config.ARGB_8888)
+            bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888).apply {
+                eraseColor(Color.WHITE)
+            }
             bmpCanvas = Canvas(bitmap!!)
         }
         return Pair(bitmap!!, bmpCanvas!!)
     }
 
     private fun drawPointsToBitmap(points: List<TouchPoint>) {
-        val (_, canvas) = ensureBitmap()
+        val (targetBmp, canvas) = ensureBitmap()
 
         val paint = if(isPencil) pathPaint else eraserPaint
         val path = Path()
@@ -197,6 +196,7 @@ class CanvasBoox(context: Context, var initialBmp: Bitmap? = null) : SurfaceView
             prePoint.y = point.y
         }
         canvas.drawPath(path, paint)
+        onUpdate(targetBmp)
     }
 
     fun startPenRender() {
@@ -236,14 +236,38 @@ class CanvasBoox(context: Context, var initialBmp: Bitmap? = null) : SurfaceView
         }
     }
 
+    private var pageIdx = 0
+    fun onPageIdx(idx: Int, bitmapLoader: (Int)->Bitmap) {
+        if(pageIdx == idx)
+            return
+
+        pageIdx = idx
+        // TODO: load bmp, etc.
+    }
 
     private fun cleanSurfaceView(): Boolean {
         if (holder == null) {
             return false
         }
         val canvas: Canvas = holder.lockCanvas() ?: return false
+        val (targetBmp, _) = ensureBitmap()
         canvas.drawColor(Color.WHITE)
+        initialBmp?.let {
+            canvas.drawBitmap(it,
+                Rect(0, 0, it.width, it.height),
+                Rect(0, 0, targetBmp.width, targetBmp.height),
+                bmpPaint)
+            initialBmp = null
+        }
         holder.unlockCanvasAndPost(canvas)
+        onUpdate(targetBmp)
         return true
     }
+
+    private var onUpdate: (bmp: Bitmap) -> Unit = {}
+
+    fun setOnUpdateListener(updateBmpListener: (bmp: Bitmap) -> Unit) {
+        onUpdate = updateBmpListener
+    }
+
 }
