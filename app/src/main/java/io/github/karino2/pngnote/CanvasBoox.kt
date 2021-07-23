@@ -188,9 +188,12 @@ class CanvasBoox(context: Context, var initialBmp: Bitmap? = null) : SurfaceView
 
         val paint = if(isPencil) pathPaint else eraserPaint
         val path = Path()
-        val prePoint = PointF(points.get(0).x, points.get(0).y)
+        val prePoint = PointF(points[0].x, points[0].y)
         path.moveTo(prePoint.x, prePoint.y)
         for (point in points) {
+            // skip strange jump point.
+            if (abs(prePoint.y - point.y) >= 30)
+                continue
             path.quadTo(prePoint.x, prePoint.y, point.x, point.y)
             prePoint.x = point.x
             prePoint.y = point.y
