@@ -8,13 +8,16 @@ import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.documentfile.provider.DocumentFile
@@ -33,11 +36,28 @@ class BookActivity : ComponentActivity() {
     }
 
     private val bookIO by lazy { BookIO(contentResolver) }
-    private val book by lazy { bookIO.loadBook(bookDir) }
+
+    private var _book : Book? = null
+    set(newbook) {
+        field = newbook
+        pageNum.value = newbook?.pages?.size ?: 0
+    }
+
+    private val book : Book
+    get() {
+        _book?.let { return it }
+        bookName.value = bookDir.name
+        bookIO.loadBook(bookDir).also {
+            _book = it
+            return it
+        }
+    }
 
 
     private val initCount = MutableLiveData(0)
     private val pageIdx = MutableLiveData(0)
+    private val pageNum = MutableLiveData(0)
+    private val bookName = MutableLiveData("(No name)")
 
     private var lastWritten = -1L
 
@@ -65,11 +85,36 @@ class BookActivity : ComponentActivity() {
     }
 
     override fun onStop() {
+        ensureSave()
+        super.onStop()
+    }
+
+    private fun ensureSave() {
         if (isDirty) {
             isDirty = false
             bookIO.saveBitmap(book.getPage(pageIdx.value!!), pageBmp!!)
         }
-        super.onStop()
+    }
+
+    fun addNewPageAndGo() {
+        ensureSave()
+        _book = book.addPage()
+        pageIdx.value = pageNum.value!!-1
+    }
+
+    fun gotoPrevPage() {
+        ensureSave()
+        pageIdx.value?.let {
+            if (it >= 1)
+                pageIdx.value = it-1
+        }
+    }
+
+    fun gotoNextPage() {
+        ensureSave()
+        pageIdx.value?.let {
+            pageIdx.value = it+1
+        }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -85,20 +130,43 @@ class BookActivity : ComponentActivity() {
                 Surface(color = MaterialTheme.colors.background) {
                     Column {
                         var isEraser by remember { mutableStateOf(false) }
+                        val bookNameState = bookName.observeAsState("")
+                        val idxState = pageIdx.observeAsState(0)
+                        val pageNumState = pageNum.observeAsState(0)
 
                         TopAppBar(title={
-                            Text("Png Note")
-                            Spacer(modifier=Modifier.width(20.dp))
-                            RadioButton(selected = !isEraser, onClick = {
-                                isEraser = false
-                            })
-                            Text("Pen")
+                            Row(modifier=Modifier.weight(3f)) {
+                                Text(bookNameState.value)
+                            }
+                            Row(modifier=Modifier.weight(4f)) {
+                                RadioButton(selected = !isEraser, onClick = {
+                                    isEraser = false
+                                })
+                                Text("Pen")
 
-                            Spacer(modifier=Modifier.width(10.dp))
-                            RadioButton(selected = isEraser, onClick = {
-                                isEraser = true
-                            })
-                            Text("Eraser")
+                                Spacer(modifier=Modifier.width(10.dp))
+                                RadioButton(selected = isEraser, onClick = {
+                                    isEraser = true
+                                })
+                                Text("Eraser")
+                            }
+                            Row(modifier=Modifier.weight(3f), verticalAlignment = Alignment.CenterVertically) {
+                                IconButton(onClick={ gotoPrevPage() }, enabled=idxState.value != 0) {
+                                    Icon(painter = painterResource(id = R.drawable.baseline_chevron_left), contentDescription = "Prev Page")
+                                }
+                                val pidx = idxState.value+1
+                                val pnum = pageNumState.value
+                                Text("$pidx/$pnum")
+
+                                val lastPage = idxState.value+1 == pageNumState.value
+                                IconButton(onClick={ gotoNextPage() }, enabled=!lastPage) {
+                                    Icon(painter = painterResource(id = R.drawable.baseline_chevron_right), contentDescription = "Next Page")
+                                }
+
+                                IconButton(onClick={ addNewPageAndGo() }, enabled = lastPage) {
+                                    Icon(imageVector = Icons.Default.Add, contentDescription = "Add Page")
+                                }
+                            }
                         },
                         navigationIcon = {
                             IconButton(onClick = { finish() }) {
@@ -107,7 +175,6 @@ class BookActivity : ComponentActivity() {
                         })
                         BoxWithConstraints {
                             val initState = initCount.observeAsState(0)
-                            val idxState = pageIdx.observeAsState(0)
                             AndroidView(modifier = Modifier.size(maxWidth, maxHeight),
                                 factory = {context->
                                     val initBmp =bookIO.loadBitmapOrNull(book.getPage(pageIdx.value!!))
@@ -119,7 +186,7 @@ class BookActivity : ComponentActivity() {
                                 update = {
                                     it.ensureInit(initState.value)
                                     it.penOrEraser(!isEraser)
-                                    it.onPageIdx(idxState.value, bitmapLoader= {idx-> bookIO.loadBitmap(book.getPage(idx))})
+                                    it.onPageIdx(idxState.value, bitmapLoader= {idx-> bookIO.loadBitmapOrNull(book.getPage(idx))})
                                 }
                             )
                         }

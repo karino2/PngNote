@@ -259,14 +259,27 @@ class CanvasBoox(context: Context, var initialBmp: Bitmap? = null) : SurfaceView
     }
 
     private var pageIdx = 0
-    fun onPageIdx(idx: Int, bitmapLoader: (Int)->Bitmap) {
+    fun onPageIdx(idx: Int, bitmapLoader: (Int)->Bitmap?) {
         if(pageIdx == idx)
             return
 
         pageIdx = idx
-        // TODO: load bmp, etc.
+
+        val newbmp = bitmapLoader(idx)
+        val (offscreenBmp, canvas) = ensureBitmap()
+        offscreenBmp.eraseColor(Color.WHITE)
+        newbmp?.let {
+            canvas.drawBitmap(it,
+                Rect(0, 0, it.width, it.height),
+                Rect(0, 0, width, height),
+                bmpPaint)
+        }
+
+        refreshUI()
     }
 
+    // call multiple time for this cause current canvas to clear.
+    // It is not what we want, but it's difficult to clear properly.
     private fun cleanSurfaceView(): Boolean {
         if (holder == null) {
             return false
@@ -283,6 +296,7 @@ class CanvasBoox(context: Context, var initialBmp: Bitmap? = null) : SurfaceView
                 Rect(0, 0, it.width, it.height),
                 Rect(0, 0, targetBmp.width, targetBmp.height),
                 bmpPaint)
+            initialBmp = null
         }
         holder.unlockCanvasAndPost(canvas)
         onUpdate(targetBmp)
