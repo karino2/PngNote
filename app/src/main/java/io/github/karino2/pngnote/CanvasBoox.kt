@@ -19,7 +19,7 @@ class CanvasBoox(context: Context, var initialBmp: Bitmap? = null) : SurfaceView
     private var clearCount = 0
 
     private val pencilWidth = 3f
-    private val eraserWidth = 50f
+    private val eraserWidth = 30f
 
     private val bmpPaint = Paint(Paint.DITHER_FLAG)
     private val pathPaint = Paint().apply {
@@ -33,9 +33,11 @@ class CanvasBoox(context: Context, var initialBmp: Bitmap? = null) : SurfaceView
     }
 
     private val eraserPaint = Paint().apply {
-        isAntiAlias = true
+        isAntiAlias = false
         color = 0xFFFFFFFF.toInt()
         style = Paint.Style.STROKE
+        strokeCap = Paint.Cap.ROUND
+        strokeJoin = Paint.Join.ROUND
         strokeWidth = eraserWidth
     }
 
@@ -55,8 +57,11 @@ class CanvasBoox(context: Context, var initialBmp: Bitmap? = null) : SurfaceView
 
         override fun onRawDrawingTouchPointListReceived(plist: TouchPointList) {
             drawPointsToBitmap(plist.points)
-            // for debug.
-            // drawBitmapToSurface()
+
+            // eraser tends to fail for update screen.
+            // I don't know the reason. Just update every time eraser coming.
+            if (isEraser)
+                refreshUI()
         }
 
         override fun onBeginRawErasing(p0: Boolean, p1: TouchPoint?) {
