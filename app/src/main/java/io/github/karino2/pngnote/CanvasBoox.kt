@@ -155,6 +155,10 @@ class CanvasBoox(context: Context, var initialBmp: Bitmap? = null) : SurfaceView
             val exclude = emptyList<Rect>()
             val limit = Rect()
             getLocalVisibleRect(limit)
+
+            // I don't know the reason, but this geometry seems to low for 40px.
+            // offset here.
+            limit.offset(0, -40)
             touchHelper.setStrokeWidth(pencilWidth)
                 .setStrokeColor(Color.BLACK)
                 .setLimitRect(limit, exclude)
