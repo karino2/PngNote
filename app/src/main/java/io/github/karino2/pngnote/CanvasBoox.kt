@@ -104,6 +104,9 @@ class CanvasBoox(context: Context, var initialBmp: Bitmap? = null) : SurfaceView
         }
     }
 
+    // Initial creation is special, regards initial state as attached.
+    private var detached = false
+
     private val surfaceCallback : SurfaceHolder.Callback by lazy { object : SurfaceHolder.Callback {
         /**
          * This is called immediately after the surface is first created.
@@ -144,6 +147,7 @@ class CanvasBoox(context: Context, var initialBmp: Bitmap? = null) : SurfaceView
         override fun surfaceDestroyed(holder: SurfaceHolder) {
             holder.removeCallback(surfaceCallback)
             touchHelper.closeRawDrawing()
+            detached = true
         }
 
     } }
@@ -157,7 +161,22 @@ class CanvasBoox(context: Context, var initialBmp: Bitmap? = null) : SurfaceView
     fun ensureInit(callCount: Int) {
         if(callCount == 1 && initCount != 1) {
             initCount = 1
-            startPenRender()
+            startRawRendering()
+            detached = false
+        }
+    }
+
+    private var restartCount = 0
+
+    fun onRestart(count: Int) {
+        if (count != restartCount) {
+            holder.addCallback(surfaceCallback)
+            touchHelper.openRawDrawing()
+            startRawRendering()
+            refreshUI()
+
+            detached = false
+            restartCount = count
         }
     }
 
@@ -201,10 +220,12 @@ class CanvasBoox(context: Context, var initialBmp: Bitmap? = null) : SurfaceView
         holder.unlockCanvasAndPost(canvas)
     }
 
-    private fun startPenRender() {
+    private fun startRawRendering() {
         touchHelper.setRawDrawingEnabled(true)
         touchHelper.isRawDrawingRenderEnabled = true
     }
+
+
 
     private var isPencil = true
     private val isEraser : Boolean

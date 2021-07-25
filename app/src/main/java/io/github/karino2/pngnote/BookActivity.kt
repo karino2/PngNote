@@ -58,6 +58,7 @@ class BookActivity : ComponentActivity() {
     private val pageIdx = MutableLiveData(0)
     private val pageNum = MutableLiveData(0)
     private val bookName = MutableLiveData("(No name)")
+    private val restartCount = MutableLiveData(0)
 
     private var lastWritten = -1L
 
@@ -84,10 +85,6 @@ class BookActivity : ComponentActivity() {
         }
     }
 
-    override fun onStop() {
-        ensureSave()
-        super.onStop()
-    }
 
     private fun ensureSave() {
         if (isDirty) {
@@ -96,13 +93,25 @@ class BookActivity : ComponentActivity() {
         }
     }
 
-    fun addNewPageAndGo() {
+    override fun onRestart() {
+        super.onRestart()
+        restartCount.value = restartCount.value!!+1
+    }
+
+    override fun onStop() {
+        ensureSave()
+        super.onStop()
+    }
+
+
+
+    private fun addNewPageAndGo() {
         ensureSave()
         _book = book.addPage()
         pageIdx.value = pageNum.value!!-1
     }
 
-    fun gotoPrevPage() {
+    private fun gotoPrevPage() {
         ensureSave()
         pageIdx.value?.let {
             if (it >= 1)
@@ -110,7 +119,7 @@ class BookActivity : ComponentActivity() {
         }
     }
 
-    fun gotoNextPage() {
+    private fun gotoNextPage() {
         ensureSave()
         pageIdx.value?.let {
             pageIdx.value = it+1
@@ -133,6 +142,7 @@ class BookActivity : ComponentActivity() {
                         val bookNameState = bookName.observeAsState("")
                         val idxState = pageIdx.observeAsState(0)
                         val pageNumState = pageNum.observeAsState(0)
+                        val restartCountState = restartCount.observeAsState(0)
 
                         TopAppBar(title={
                             Row(modifier=Modifier.weight(3f)) {
@@ -187,6 +197,7 @@ class BookActivity : ComponentActivity() {
                                     it.ensureInit(initState.value)
                                     it.penOrEraser(!isEraser)
                                     it.onPageIdx(idxState.value, bitmapLoader= {idx-> bookIO.loadBitmapOrNull(book.getPage(idx))})
+                                    it.onRestart(restartCountState.value!!)
                                 }
                             )
                         }
