@@ -111,6 +111,16 @@ class BookActivity : ComponentActivity() {
         pageIdx.value = pageNum.value!!-1
     }
 
+    private fun gotoFirstPage() {
+        ensureSave()
+        pageIdx.value = 0
+    }
+
+    private fun gotoLastPage() {
+        ensureSave()
+        pageIdx.value = pageNum.value!!-1
+    }
+
     private fun gotoPrevPage() {
         ensureSave()
         pageIdx.value?.let {
@@ -145,10 +155,7 @@ class BookActivity : ComponentActivity() {
                         val restartCountState = restartCount.observeAsState(0)
 
                         TopAppBar(title={
-                            Row(modifier=Modifier.weight(3f)) {
-                                Text(bookNameState.value)
-                            }
-                            Row(modifier=Modifier.weight(4f)) {
+                            Row(modifier=Modifier.weight(5f)) {
                                 RadioButton(selected = !isEraser, onClick = {
                                     isEraser = false
                                 })
@@ -160,8 +167,11 @@ class BookActivity : ComponentActivity() {
                                 })
                                 Text("Eraser")
                             }
-                            Row(modifier=Modifier.weight(3f), verticalAlignment = Alignment.CenterVertically) {
-                                IconButton(onClick={ gotoPrevPage() }, enabled=idxState.value != 0) {
+                            Row(modifier=Modifier.weight(5f), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.End) {
+                                IconButton(modifier=Modifier.size(24.dp), onClick={ gotoFirstPage() }, enabled=idxState.value != 0) {
+                                    Icon(painter = painterResource(id = R.drawable.outline_first_page), contentDescription = "First Page")
+                                }
+                                IconButton(modifier=Modifier.size(24.dp), onClick={ gotoPrevPage() }, enabled=idxState.value != 0) {
                                     Icon(painter = painterResource(id = R.drawable.baseline_chevron_left), contentDescription = "Prev Page")
                                 }
                                 val pidx = idxState.value+1
@@ -169,8 +179,11 @@ class BookActivity : ComponentActivity() {
                                 Text("$pidx/$pnum")
 
                                 val lastPage = idxState.value+1 == pageNumState.value
-                                IconButton(onClick={ gotoNextPage() }, enabled=!lastPage) {
+                                IconButton(modifier=Modifier.size(24.dp), onClick={ gotoNextPage() }, enabled=!lastPage) {
                                     Icon(painter = painterResource(id = R.drawable.baseline_chevron_right), contentDescription = "Next Page")
+                                }
+                                IconButton(modifier=Modifier.size(24.dp), onClick={ gotoLastPage() }, enabled=!lastPage) {
+                                    Icon(painter = painterResource(id = R.drawable.outline_last_page), contentDescription = "Last Page")
                                 }
 
                                 IconButton(onClick={ addNewPageAndGo() }, enabled = lastPage) {
