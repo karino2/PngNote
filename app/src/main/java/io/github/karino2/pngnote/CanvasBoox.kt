@@ -10,13 +10,13 @@ import com.onyx.android.sdk.pen.RawInputCallback
 import com.onyx.android.sdk.pen.TouchHelper
 import com.onyx.android.sdk.pen.data.TouchPoint
 import com.onyx.android.sdk.pen.data.TouchPointList
+import java.util.*
 import kotlin.math.abs
 
 
 class CanvasBoox(context: Context, var initialBmp: Bitmap? = null) : SurfaceView(context) {
     var bitmap: Bitmap? = null
     private var bmpCanvas: Canvas? = null
-    private var clearCount = 0
 
     private val pencilWidth = 3f
     private val eraserWidth = 30f
@@ -41,12 +41,59 @@ class CanvasBoox(context: Context, var initialBmp: Bitmap? = null) : SurfaceView
         strokeWidth = eraserWidth
     }
 
+    private val undoList = UndoList()
+
+    private var undoCount = 0
+    private var redoCount = 0
+
+    fun undo(count : Int) {
+        if (undoCount != count) {
+            undoCount = count
+            undoList.undo(bmpCanvas!!)
+
+            refreshAfterUndoRedo()
+        }
+    }
+
+    fun redo(count: Int) {
+        if(redoCount != count) {
+            redoCount = count
+            undoList.redo(bmpCanvas!!)
+
+            refreshAfterUndoRedo()
+        }
+    }
+
+    private fun notifyUndoStateChanged() {
+        undoStateListener(canUndo, canRedo)
+    }
+
+    private fun refreshAfterUndoRedo() {
+        updateBmpListener(bitmap!!)
+        notifyUndoStateChanged()
+        refreshUI()
+    }
+
+    val canUndo: Boolean
+        get() = undoList.canUndo
+
+    val canRedo: Boolean
+        get() = undoList.canRedo
+
 
 
     private var initCount = 0
 
+    private var mightNeedRefresh = false
+
     private val inputCallback = object: RawInputCallback() {
         override fun onBeginRawDrawing(p0: Boolean, p1: TouchPoint?) {
+            // next pen rendering coming to soon before last refresh,
+            // UI update might not yet finish.
+            // reschedule next refresh for sure.
+            if(lastRefresh != -1L && getCurrentMills()-lastRefresh < 500){
+                mightNeedRefresh = true
+            }
         }
 
         override fun onEndRawDrawing(p0: Boolean, p1: TouchPoint?) {
@@ -57,6 +104,13 @@ class CanvasBoox(context: Context, var initialBmp: Bitmap? = null) : SurfaceView
 
         override fun onRawDrawingTouchPointListReceived(plist: TouchPointList) {
             drawPointsToBitmap(plist.points)
+
+            if(mightNeedRefresh) {
+                mightNeedRefresh = false
+                lastRefresh = getCurrentMills()
+                refreshUI()
+                return
+            }
 
             // eraser tends to fail for update screen.
             // I don't know the reason. Just update every time eraser coming.
@@ -195,6 +249,24 @@ class CanvasBoox(context: Context, var initialBmp: Bitmap? = null) : SurfaceView
         return Pair(bitmap!!, bmpCanvas!!)
     }
 
+    // use for short term temporary only.
+    private val tempRegion = RectF()
+    private val tempRect = Rect()
+    fun pathBound(path: Path) : Rect {
+        path.computeBounds(tempRegion, false)
+        tempRegion.roundOut(tempRect)
+        widen(tempRect, 5)
+        return tempRect
+    }
+
+    private fun widen(tmpInval: Rect, margin: Int) {
+        val newLeft = (tmpInval.left - margin).coerceAtLeast(0)
+        val newTop = (tmpInval.top - margin).coerceAtLeast(0)
+        val newRight = (tmpInval.right + margin).coerceAtMost(width)
+        val newBottom = (tmpInval.bottom + margin).coerceAtMost(height)
+        tmpInval.set(newLeft, newTop, newRight, newBottom)
+    }
+
     private fun drawPointsToBitmap(points: List<TouchPoint>) {
         val (targetBmp, canvas) = ensureBitmap()
 
@@ -210,8 +282,16 @@ class CanvasBoox(context: Context, var initialBmp: Bitmap? = null) : SurfaceView
             prePoint.x = point.x
             prePoint.y = point.y
         }
+
+        // undo-redo push and draw.
+        val region = pathBound(path)
+        val undo = Bitmap.createBitmap(targetBmp, region.left, region.top, region.width(), region.height())
         canvas.drawPath(path, paint)
-        onUpdate(targetBmp)
+        val redo = Bitmap.createBitmap(targetBmp, region.left, region.top, region.width(), region.height())
+        undoList.pushUndoCommand(region.left, region.top, undo, redo)
+
+        updateBmpListener(targetBmp)
+        notifyUndoStateChanged()
     }
 
     private fun drawBitmapToSurface() {
@@ -262,6 +342,18 @@ class CanvasBoox(context: Context, var initialBmp: Bitmap? = null) : SurfaceView
         refreshUI()
     }
 
+    private fun getCurrentMills() = (Date()).time
+    private var lastRefresh = -1L
+
+    private var refreshCount = 0
+    fun refreshUI(count: Int) {
+        if(refreshCount != count) {
+            refreshUI()
+            lastRefresh = getCurrentMills()
+            refreshCount = count
+        }
+    }
+
     private fun refreshUI() {
         val (bmp, _) = ensureBitmap()
         holder.lockCanvas()?.let { lockCanvas->
@@ -300,6 +392,8 @@ class CanvasBoox(context: Context, var initialBmp: Bitmap? = null) : SurfaceView
                 Rect(0, 0, width, height),
                 bmpPaint)
         }
+        undoList.clear()
+        notifyUndoStateChanged()
 
         refreshUI()
     }
@@ -325,14 +419,20 @@ class CanvasBoox(context: Context, var initialBmp: Bitmap? = null) : SurfaceView
             initialBmp = null
         }
         holder.unlockCanvasAndPost(canvas)
-        onUpdate(targetBmp)
+        updateBmpListener(targetBmp)
         return true
     }
 
-    private var onUpdate: (bmp: Bitmap) -> Unit = {}
+    private var updateBmpListener: (bmp: Bitmap) -> Unit = {}
 
     fun setOnUpdateListener(updateBmpListener: (bmp: Bitmap) -> Unit) {
-        onUpdate = updateBmpListener
+        this.updateBmpListener = updateBmpListener
     }
+
+    private var undoStateListener: (undo:Boolean, redo:Boolean) -> Unit = { _, _ ->}
+    fun setOnUndoStateListener(undoStateListener: (undo:Boolean, redo:Boolean) -> Unit) {
+        this.undoStateListener = undoStateListener
+    }
+
 
 }

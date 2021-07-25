@@ -27,6 +27,7 @@ import io.github.karino2.pngnote.ui.theme.PngNoteTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.util.*
 
 class BookActivity : ComponentActivity() {
@@ -46,7 +47,6 @@ class BookActivity : ComponentActivity() {
     private val book : Book
     get() {
         _book?.let { return it }
-        bookName.value = bookDir.name
         bookIO.loadBook(bookDir).also {
             _book = it
             return it
@@ -57,8 +57,12 @@ class BookActivity : ComponentActivity() {
     private val initCount = MutableLiveData(0)
     private val pageIdx = MutableLiveData(0)
     private val pageNum = MutableLiveData(0)
-    private val bookName = MutableLiveData("(No name)")
     private val restartCount = MutableLiveData(0)
+    private val canUndo = MutableLiveData(false)
+    private val canRedo = MutableLiveData(false)
+    private val undoCount = MutableLiveData(0)
+    private val redoCount = MutableLiveData(0)
+    private val refreshCount = MutableLiveData(0)
 
     private var lastWritten = -1L
 
@@ -67,8 +71,21 @@ class BookActivity : ComponentActivity() {
     private fun notifyBitmapUpdate(newBmp : Bitmap) {
         isDirty = true
         lastWritten = getCurrentMills()
+
         pageBmp = newBmp
         lazySave()
+    }
+
+
+    private fun notifyUndoStateChanged(canUndo1: Boolean, canRedo1: Boolean) {
+        val needRefresh = (canUndo.value != canUndo1) || (canRedo.value != canRedo1)
+
+        canUndo.value = canUndo1
+        canRedo.value = canRedo1
+
+        if(needRefresh) {
+            refreshCount.value = refreshCount.value!! + 1
+        }
     }
 
     private fun getCurrentMills() = (Date()).time
@@ -78,7 +95,7 @@ class BookActivity : ComponentActivity() {
     private fun lazySave() {
         lifecycleScope.launch(Dispatchers.IO) {
             delay(SAVE_INTERVAL_MILL)
-            if ((getCurrentMills()- lastWritten) >= SAVE_INTERVAL_MILL) {
+            if (isDirty && (getCurrentMills()- lastWritten) >= SAVE_INTERVAL_MILL) {
                 isDirty = false
                 bookIO.saveBitmap(book.getPage(pageIdx.value!!), pageBmp!!)
             }
@@ -149,13 +166,17 @@ class BookActivity : ComponentActivity() {
                 Surface(color = MaterialTheme.colors.background) {
                     Column {
                         var isEraser by remember { mutableStateOf(false) }
-                        val bookNameState = bookName.observeAsState("")
                         val idxState = pageIdx.observeAsState(0)
                         val pageNumState = pageNum.observeAsState(0)
                         val restartCountState = restartCount.observeAsState(0)
+                        val canUndoState = canUndo.observeAsState(false)
+                        val canRedoState = canRedo.observeAsState(false)
+                        val undoCountState = undoCount.observeAsState(0)
+                        val redoCountState = redoCount.observeAsState(0)
+                        val refreshCountState = refreshCount.observeAsState(0)
 
                         TopAppBar(title={
-                            Row(modifier=Modifier.weight(5f)) {
+                            Row(modifier=Modifier.weight(5f), verticalAlignment = Alignment.CenterVertically) {
                                 RadioButton(selected = !isEraser, onClick = {
                                     isEraser = false
                                 })
@@ -166,6 +187,14 @@ class BookActivity : ComponentActivity() {
                                     isEraser = true
                                 })
                                 Text("Eraser")
+                                Spacer(modifier=Modifier.width(20.dp))
+
+                                IconButton(onClick={ undoCount.value = undoCount.value!!+1 }, enabled=canUndoState.value) {
+                                    Icon(painter = painterResource(id = R.drawable.outline_undo), contentDescription = "Undo")
+                                }
+                                IconButton(onClick={ redoCount.value = redoCount.value!!+1  }, enabled=canRedoState.value) {
+                                    Icon(painter = painterResource(id = R.drawable.outline_redo), contentDescription = "Redo")
+                                }
                             }
                             Row(modifier=Modifier.weight(5f), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.End) {
                                 IconButton(modifier=Modifier.size(24.dp), onClick={ gotoFirstPage() }, enabled=idxState.value != 0) {
@@ -204,6 +233,7 @@ class BookActivity : ComponentActivity() {
                                     CanvasBoox(context, initBmp).apply {
                                         firstInit()
                                         setOnUpdateListener { notifyBitmapUpdate(it) }
+                                        setOnUndoStateListener { undo, redo-> notifyUndoStateChanged(undo, redo) }
                                     }
                                 },
                                 update = {
@@ -211,6 +241,9 @@ class BookActivity : ComponentActivity() {
                                     it.penOrEraser(!isEraser)
                                     it.onPageIdx(idxState.value, bitmapLoader= {idx-> bookIO.loadBitmapOrNull(book.getPage(idx))})
                                     it.onRestart(restartCountState.value!!)
+                                    it.undo(undoCountState.value)
+                                    it.redo(redoCountState.value)
+                                    it.refreshUI(refreshCountState.value)
                                 }
                             )
                         }
