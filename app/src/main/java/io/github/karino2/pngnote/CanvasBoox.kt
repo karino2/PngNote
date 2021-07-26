@@ -84,16 +84,8 @@ class CanvasBoox(context: Context, var initialBmp: Bitmap? = null) : SurfaceView
 
     private var initCount = 0
 
-    private var mightNeedRefresh = false
-
     private val inputCallback = object: RawInputCallback() {
         override fun onBeginRawDrawing(p0: Boolean, p1: TouchPoint?) {
-            // next pen rendering coming to soon before last refresh,
-            // UI update might not yet finish.
-            // reschedule next refresh for sure.
-            if(lastRefresh != -1L && getCurrentMills()-lastRefresh < 500){
-                mightNeedRefresh = true
-            }
         }
 
         override fun onEndRawDrawing(p0: Boolean, p1: TouchPoint?) {
@@ -104,13 +96,6 @@ class CanvasBoox(context: Context, var initialBmp: Bitmap? = null) : SurfaceView
 
         override fun onRawDrawingTouchPointListReceived(plist: TouchPointList) {
             drawPointsToBitmap(plist.points)
-
-            if(mightNeedRefresh) {
-                mightNeedRefresh = false
-                lastRefresh = getCurrentMills()
-                refreshUI()
-                return
-            }
 
             // eraser tends to fail for update screen.
             // I don't know the reason. Just update every time eraser coming.
@@ -346,14 +331,11 @@ class CanvasBoox(context: Context, var initialBmp: Bitmap? = null) : SurfaceView
         refreshUI()
     }
 
-    private fun getCurrentMills() = (Date()).time
-    private var lastRefresh = -1L
 
     private var refreshCount = 0
     fun refreshUI(count: Int) {
         if(refreshCount != count) {
             refreshUI()
-            lastRefresh = getCurrentMills()
             refreshCount = count
         }
     }

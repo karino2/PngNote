@@ -3,6 +3,7 @@ package io.github.karino2.pngnote
 import android.graphics.Bitmap
 import android.net.Uri
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.*
@@ -53,12 +54,13 @@ class BookActivity : ComponentActivity() {
         }
     }
 
+    private fun showMessage(msg: String) = Toast.makeText(this, msg, Toast.LENGTH_LONG).show()
+
 
     private val initCount = MutableLiveData(0)
     private val pageIdx = MutableLiveData(0)
     private val pageNum = MutableLiveData(0)
     private val restartCount = MutableLiveData(0)
-    private val canUndo = MutableLiveData(false)
     private val canRedo = MutableLiveData(false)
     private val undoCount = MutableLiveData(0)
     private val redoCount = MutableLiveData(0)
@@ -77,10 +79,11 @@ class BookActivity : ComponentActivity() {
     }
 
 
+    private var canUndo = false
     private fun notifyUndoStateChanged(canUndo1: Boolean, canRedo1: Boolean) {
-        val needRefresh = (canUndo.value != canUndo1) || (canRedo.value != canRedo1)
+        val needRefresh = (canRedo.value != canRedo1)
 
-        canUndo.value = canUndo1
+        canUndo = canUndo1
         canRedo.value = canRedo1
 
         if(needRefresh) {
@@ -169,7 +172,6 @@ class BookActivity : ComponentActivity() {
                         val idxState = pageIdx.observeAsState(0)
                         val pageNumState = pageNum.observeAsState(0)
                         val restartCountState = restartCount.observeAsState(0)
-                        val canUndoState = canUndo.observeAsState(false)
                         val canRedoState = canRedo.observeAsState(false)
                         val undoCountState = undoCount.observeAsState(0)
                         val redoCountState = redoCount.observeAsState(0)
@@ -189,7 +191,13 @@ class BookActivity : ComponentActivity() {
                                 Text("Eraser")
                                 Spacer(modifier=Modifier.width(20.dp))
 
-                                IconButton(onClick={ undoCount.value = undoCount.value!!+1 }, enabled=canUndoState.value) {
+                                IconButton(onClick={
+                                    if(canUndo) {
+                                        undoCount.value = undoCount.value!!+1
+                                    } else {
+                                        showMessage("Not yet undo-able.")
+                                    }
+                                   }, enabled=true) {
                                     Icon(painter = painterResource(id = R.drawable.outline_undo), contentDescription = "Undo")
                                 }
                                 IconButton(onClick={ redoCount.value = redoCount.value!!+1  }, enabled=canRedoState.value) {
@@ -239,7 +247,12 @@ class BookActivity : ComponentActivity() {
                                 update = {
                                     it.ensureInit(initState.value)
                                     it.penOrEraser(!isEraser)
-                                    it.onPageIdx(idxState.value, bitmapLoader= {idx-> bookIO.loadBitmapOrNull(book.getPage(idx))})
+                                    it.onPageIdx(idxState.value, bitmapLoader= {idx->
+                                        bookIO.loadBitmapOrNull(book.getPage(idx)).also {
+                                            isDirty = false
+                                            pageBmp = it
+                                        }
+                                    })
                                     it.onRestart(restartCountState.value!!)
                                     it.undo(undoCountState.value)
                                     it.redo(redoCountState.value)
