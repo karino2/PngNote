@@ -6,6 +6,8 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.widget.Toast
 import androidx.documentfile.provider.DocumentFile
+import java.util.concurrent.locks.Lock
+import kotlin.concurrent.withLock
 
 class BookList(val dir: DocumentFile, val resolver: ContentResolver) {
     companion object {
@@ -71,7 +73,9 @@ class BookIO(private val resolver: ContentResolver) {
 
     fun saveBitmap(page: BookPage, bitmap: Bitmap) {
         resolver.openOutputStream(page.file.uri, "wt").use {
-            bitmap.compress(Bitmap.CompressFormat.PNG, 80, it)
+            BookActivity.bitmapLock.withLock {
+                bitmap.compress(Bitmap.CompressFormat.PNG, 80, it)
+            }
         }
     }
 

@@ -11,6 +11,7 @@ import com.onyx.android.sdk.pen.TouchHelper
 import com.onyx.android.sdk.pen.data.TouchPoint
 import com.onyx.android.sdk.pen.data.TouchPointList
 import java.util.*
+import kotlin.concurrent.withLock
 import kotlin.math.abs
 
 
@@ -49,7 +50,9 @@ class CanvasBoox(context: Context, var initialBmp: Bitmap? = null) : SurfaceView
     fun undo(count : Int) {
         if (undoCount != count) {
             undoCount = count
-            undoList.undo(bmpCanvas!!)
+            BookActivity.bitmapLock.withLock {
+                undoList.undo(bmpCanvas!!)
+            }
 
             refreshAfterUndoRedo()
         }
@@ -58,7 +61,9 @@ class CanvasBoox(context: Context, var initialBmp: Bitmap? = null) : SurfaceView
     fun redo(count: Int) {
         if(redoCount != count) {
             redoCount = count
-            undoList.redo(bmpCanvas!!)
+            BookActivity.bitmapLock.withLock {
+                undoList.redo(bmpCanvas!!)
+            }
 
             refreshAfterUndoRedo()
         }
@@ -274,9 +279,24 @@ class CanvasBoox(context: Context, var initialBmp: Bitmap? = null) : SurfaceView
 
         // undo-redo push and draw.
         val region = pathBound(path)
-        val undo = Bitmap.createBitmap(targetBmp, region.left, region.top, region.width(), region.height())
-        canvas.drawPath(path, paint)
-        val redo = Bitmap.createBitmap(targetBmp, region.left, region.top, region.width(), region.height())
+        val (undo, redo) = BookActivity.bitmapLock.withLock {
+            val undo = Bitmap.createBitmap(
+                targetBmp,
+                region.left,
+                region.top,
+                region.width(),
+                region.height()
+            )
+            canvas.drawPath(path, paint)
+            val redo = Bitmap.createBitmap(
+                targetBmp,
+                region.left,
+                region.top,
+                region.width(),
+                region.height()
+            )
+            Pair(undo, redo)
+        }
         undoList.pushUndoCommand(region.left, region.top, undo, redo)
 
         updateBmpListener(targetBmp)
@@ -398,10 +418,14 @@ class CanvasBoox(context: Context, var initialBmp: Bitmap? = null) : SurfaceView
                 Rect(0, 0, it.width, it.height),
                 Rect(0, 0, width, height),
                 bmpPaint)
-            bmpCanvas.drawBitmap(it,
-                Rect(0, 0, it.width, it.height),
-                Rect(0, 0, targetBmp.width, targetBmp.height),
-                bmpPaint)
+            BookActivity.bitmapLock.withLock {
+                bmpCanvas.drawBitmap(
+                    it,
+                    Rect(0, 0, it.width, it.height),
+                    Rect(0, 0, targetBmp.width, targetBmp.height),
+                    bmpPaint
+                )
+            }
             initialBmp = null
         }
         holder.unlockCanvasAndPost(canvas)

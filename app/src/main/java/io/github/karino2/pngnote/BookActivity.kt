@@ -32,6 +32,9 @@ import kotlinx.coroutines.withContext
 import java.util.*
 
 class BookActivity : ComponentActivity() {
+    companion object {
+        val bitmapLock = java.util.concurrent.locks.ReentrantLock()
+    }
     private lateinit var dirUrl : Uri
     private val bookDir by lazy {
         DocumentFile.fromTreeUri(this, dirUrl) ?: throw Exception("Cant open dir.")
