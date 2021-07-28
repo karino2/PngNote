@@ -60,6 +60,15 @@ class BookIO(private val resolver: ContentResolver) {
         }
     }
 
+    fun loadThumbnail(bookDir: DocumentFile) : Bitmap? {
+        return bookDir.findFile("0000.png")?.let { file->
+            resolver.openFileDescriptor(file.uri, "r").use {
+                val option = BitmapFactory.Options().apply { inSampleSize = 3 }
+                BitmapFactory.decodeFileDescriptor(it!!.fileDescriptor, null, option)
+            }
+        }
+    }
+
     private fun isEmpty(file: DocumentFile) : Boolean {
         if (!file.isFile)
             return false

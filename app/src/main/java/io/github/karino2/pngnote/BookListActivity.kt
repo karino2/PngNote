@@ -1,8 +1,10 @@
 package io.github.karino2.pngnote
 
 import android.content.Intent
+import android.graphics.Bitmap
 import android.net.Uri
 import android.os.Bundle
+import android.util.DisplayMetrics
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
@@ -20,8 +22,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Color.Companion.Black
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.documentfile.provider.DocumentFile
@@ -29,6 +34,8 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import io.github.karino2.pngnote.ui.theme.PngNoteTheme
 import io.github.karino2.pngnote.ui.theme.booxTextButtonColors
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 class BookListActivity : ComponentActivity() {
     private var _url : Uri? = null
@@ -70,6 +77,19 @@ class BookListActivity : ComponentActivity() {
             .sortedByDescending { it.name }
     }
 
+    private val bookSizeDP by lazy {
+        val metrics = DisplayMetrics()
+        windowManager.defaultDisplay.getMetrics(metrics)
+
+        // about half of 80%〜90%.
+
+        val height = (metrics.heightPixels*0.40/metrics.density).dp
+        val width = (metrics.widthPixels*0.45/metrics.density).dp
+
+        Pair(width, height)
+    }
+
+    private val bookIO by lazy { BookIO(contentResolver) }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -88,7 +108,9 @@ class BookListActivity : ComponentActivity() {
                     if (showDialog.value) {
                         NewBookPopup(onNewBook = { addNewBook(it) }, onDismiss= { showDialog.value = false })
                     }
-                    BookList(files, gotoBook = { bookDir ->
+                    BookList(files, bookSizeDP,
+                        { bookDir-> bookIO.loadThumbnail(bookDir) },
+                        gotoBook = { bookDir ->
                         Intent(this@BookListActivity, BookActivity::class.java).also {
                             it.data = bookDir.uri
                             startActivity(it)
@@ -133,7 +155,7 @@ fun NewBookPopup(onNewBook : (bookName: String)->Unit, onDismiss: ()->Unit) {
             Column {
                 TextField(value = textState, onValueChange={textState = it},
                     modifier= Modifier
-                        .border(width=1.dp, MaterialTheme.colors.onPrimary)
+                        .border(width = 1.dp, MaterialTheme.colors.onPrimary)
                         .fillMaxWidth()
                         .focusRequester(requester),
                     placeholder = { Text("New book name")})
@@ -165,29 +187,56 @@ fun NewBookPopup(onNewBook : (bookName: String)->Unit, onDismiss: ()->Unit) {
     )
 }
 
+val blankBitmap: Bitmap = Bitmap.createBitmap(100, 100, Bitmap.Config.ARGB_8888).apply { eraseColor(
+    android.graphics.Color.LTGRAY) }
 
 
 @Composable
-fun BookList(bookDirs: LiveData<List<DocumentFile>>, gotoBook : (dir: DocumentFile)->Unit) {
+fun BookList(bookDirs: LiveData<List<DocumentFile>>, bookSize : Pair<Dp, Dp>, loadThumbnail: (dir: DocumentFile)->Bitmap?, gotoBook : (dir: DocumentFile)->Unit) {
     val bookListState = bookDirs.observeAsState(emptyList())
 
     Column(modifier= Modifier
         .padding(10.dp)
         .verticalScroll(rememberScrollState())) {
-        bookListState.value.forEach { dir->
-            Book(dir, onOpenBook = { gotoBook(dir) })
+        val rowNum = (bookListState.value.size+1)/2
+        0.until(rowNum).forEach { rowIdx ->
+            TwoBook(bookListState.value, rowIdx*2, bookSize, loadThumbnail, gotoBook)
         }
     }
 }
 
 @Composable
-fun Book(deckDir: DocumentFile, onOpenBook : ()->Unit) {
-    Card(border= BorderStroke(2.dp, Color.Black)) {
-        Row(modifier= Modifier
-            .clickable(onClick = onOpenBook)
-            .padding(5.dp, 0.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text(deckDir.name!!, fontSize = 20.sp, modifier=Modifier.weight(9f))
+fun TwoBook(books: List<DocumentFile>, leftIdx: Int, bookSize : Pair<Dp, Dp>, loadThumbnail: (dir: DocumentFile)->Bitmap?, gotoBook : (dir: DocumentFile)->Unit) {
+    Row {
+        Card(modifier=Modifier.weight(1f).padding(5.dp), border= BorderStroke(2.dp, Color.Black)) {
+            val book =books[leftIdx]
+            Book(book, bookSize, loadThumbnail, onOpenBook = { gotoBook(book) })
+        }
+        if (leftIdx+1 < books.size) {
+            Card(modifier=Modifier.weight(1f).padding(5.dp), border= BorderStroke(2.dp, Color.Black)) {
+                val book =books[leftIdx+1]
+                Book(book, bookSize, loadThumbnail, onOpenBook = { gotoBook(book) })
+            }
+        } else {
+            Card(modifier=Modifier.weight(1f)) {}
         }
     }
+}
 
+@Composable
+fun Book(bookDir: DocumentFile, bookSize : Pair<Dp, Dp>, loadThumbnail: (dir: DocumentFile)->Bitmap?, onOpenBook : ()->Unit) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier= Modifier
+        .clickable(onClick = onOpenBook)) {
+        val bookImage = remember { mutableStateOf<Bitmap>(blankBitmap) }
+        val loaderScope = rememberCoroutineScope()
+
+        loaderScope.launch(Dispatchers.IO) {
+            loadThumbnail(bookDir)?.let {
+                bookImage.value = it
+            }
+        }
+
+        Image(modifier= Modifier.size(bookSize.first, bookSize.second).padding(5.dp, 10.dp), bitmap = bookImage.value.asImageBitmap(), contentDescription = "Book Image")
+        Text(bookDir.name!!, fontSize = 20.sp)
+    }
 }
