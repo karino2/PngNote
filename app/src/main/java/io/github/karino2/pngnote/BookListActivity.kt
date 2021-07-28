@@ -36,6 +36,7 @@ import io.github.karino2.pngnote.ui.theme.PngNoteTheme
 import io.github.karino2.pngnote.ui.theme.booxTextButtonColors
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class BookListActivity : ComponentActivity() {
     private var _url : Uri? = null
@@ -90,6 +91,15 @@ class BookListActivity : ComponentActivity() {
     }
 
     private val bookIO by lazy { BookIO(contentResolver) }
+
+    override fun onRestart() {
+        super.onRestart()
+
+        // return from other activity, etc.
+        if(true == files.value?.isNotEmpty()) {
+            reloadBookList(_url!!)
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -231,8 +241,9 @@ fun Book(bookDir: DocumentFile, bookSize : Pair<Dp, Dp>, loadThumbnail: (dir: Do
         val loaderScope = rememberCoroutineScope()
 
         loaderScope.launch(Dispatchers.IO) {
-            loadThumbnail(bookDir)?.let {
-                bookImage.value = it
+            val thumbnail = loadThumbnail(bookDir)
+            withContext(Dispatchers.Main) {
+                bookImage.value = thumbnail ?: blankBitmap
             }
         }
 
