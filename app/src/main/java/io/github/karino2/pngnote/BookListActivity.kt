@@ -32,6 +32,7 @@ import androidx.compose.ui.unit.sp
 import androidx.documentfile.provider.DocumentFile
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
+import androidx.lifecycle.lifecycleScope
 import io.github.karino2.pngnote.ui.theme.PngNoteTheme
 import io.github.karino2.pngnote.ui.theme.booxTextButtonColors
 import kotlinx.coroutines.Dispatchers
@@ -64,9 +65,21 @@ class BookListActivity : ComponentActivity() {
     }
 
     private val files = MutableLiveData(emptyList<DocumentFile>())
+    private val thumbnails = MutableLiveData(emptyList<Bitmap>())
 
     private fun reloadBookList(url: Uri) {
-        files.value = listFiles(url)
+        listFiles(url).also { flist->
+            thumbnails.value = flist.map { blankBitmap }
+            files.value = flist
+            lifecycleScope.launch(Dispatchers.IO) {
+                val thumbs = flist.map {
+                    bookIO.loadThumbnail(it) ?: blankBitmap
+                }
+                withContext(Dispatchers.Main) {
+                    thumbnails.value = thumbs
+                }
+            }
+        }
     }
 
     private fun listFiles(url: Uri): List<DocumentFile> {
@@ -118,8 +131,7 @@ class BookListActivity : ComponentActivity() {
                     if (showDialog.value) {
                         NewBookPopup(onNewBook = { addNewBook(it) }, onDismiss= { showDialog.value = false })
                     }
-                    BookList(files, bookSizeDP,
-                        { bookDir-> bookIO.loadThumbnail(bookDir) },
+                    BookList(files, thumbnails, bookSizeDP,
                         gotoBook = { bookDir ->
                         Intent(this@BookListActivity, BookActivity::class.java).also {
                             it.data = bookDir.uri
@@ -202,30 +214,31 @@ val blankBitmap: Bitmap = Bitmap.createBitmap(100, 100, Bitmap.Config.ARGB_8888)
 
 
 @Composable
-fun BookList(bookDirs: LiveData<List<DocumentFile>>, bookSize : Pair<Dp, Dp>, loadThumbnail: (dir: DocumentFile)->Bitmap?, gotoBook : (dir: DocumentFile)->Unit) {
+fun BookList(bookDirs: LiveData<List<DocumentFile>>, thumbnails: LiveData<List<Bitmap>>, bookSize : Pair<Dp, Dp>,  gotoBook : (dir: DocumentFile)->Unit) {
     val bookListState = bookDirs.observeAsState(emptyList())
+    val thumbnailListState = thumbnails.observeAsState(emptyList())
 
     Column(modifier= Modifier
         .padding(10.dp)
         .verticalScroll(rememberScrollState())) {
         val rowNum = (bookListState.value.size+1)/2
         0.until(rowNum).forEach { rowIdx ->
-            TwoBook(bookListState.value, rowIdx*2, bookSize, loadThumbnail, gotoBook)
+            TwoBook(bookListState.value, thumbnailListState.value,rowIdx*2, bookSize, gotoBook)
         }
     }
 }
 
 @Composable
-fun TwoBook(books: List<DocumentFile>, leftIdx: Int, bookSize : Pair<Dp, Dp>, loadThumbnail: (dir: DocumentFile)->Bitmap?, gotoBook : (dir: DocumentFile)->Unit) {
+fun TwoBook(books: List<DocumentFile>, thumbnails: List<Bitmap>, leftIdx: Int, bookSize : Pair<Dp, Dp>, gotoBook : (dir: DocumentFile)->Unit) {
     Row {
         Card(modifier=Modifier.weight(1f).padding(5.dp), border= BorderStroke(2.dp, Color.Black)) {
             val book =books[leftIdx]
-            Book(book, bookSize, loadThumbnail, onOpenBook = { gotoBook(book) })
+            Book(book, bookSize, thumbnails[leftIdx], onOpenBook = { gotoBook(book) })
         }
         if (leftIdx+1 < books.size) {
             Card(modifier=Modifier.weight(1f).padding(5.dp), border= BorderStroke(2.dp, Color.Black)) {
                 val book =books[leftIdx+1]
-                Book(book, bookSize, loadThumbnail, onOpenBook = { gotoBook(book) })
+                Book(book, bookSize, thumbnails[leftIdx+1], onOpenBook = { gotoBook(book) })
             }
         } else {
             Card(modifier=Modifier.weight(1f)) {}
@@ -234,20 +247,10 @@ fun TwoBook(books: List<DocumentFile>, leftIdx: Int, bookSize : Pair<Dp, Dp>, lo
 }
 
 @Composable
-fun Book(bookDir: DocumentFile, bookSize : Pair<Dp, Dp>, loadThumbnail: (dir: DocumentFile)->Bitmap?, onOpenBook : ()->Unit) {
+fun Book(bookDir: DocumentFile, bookSize : Pair<Dp, Dp>, thumbnail: Bitmap, onOpenBook : ()->Unit) {
     Column(horizontalAlignment = Alignment.CenterHorizontally, modifier= Modifier
         .clickable(onClick = onOpenBook)) {
-        val bookImage = remember { mutableStateOf<Bitmap>(blankBitmap) }
-        val loaderScope = rememberCoroutineScope()
-
-        loaderScope.launch(Dispatchers.IO) {
-            val thumbnail = loadThumbnail(bookDir)
-            withContext(Dispatchers.Main) {
-                bookImage.value = thumbnail ?: blankBitmap
-            }
-        }
-
-        Image(modifier= Modifier.size(bookSize.first, bookSize.second).padding(5.dp, 10.dp), bitmap = bookImage.value.asImageBitmap(), contentDescription = "Book Image")
+        Image(modifier= Modifier.size(bookSize.first, bookSize.second).padding(5.dp, 10.dp), bitmap = thumbnail.asImageBitmap(), contentDescription = "Book Image")
         Text(bookDir.name!!, fontSize = 20.sp)
     }
 }
