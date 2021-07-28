@@ -251,7 +251,10 @@ class BookActivity : ComponentActivity() {
                             }
                         },
                         navigationIcon = {
-                            IconButton(onClick = { finish() }) {
+                            IconButton(onClick = {
+                                ensureSave()
+                                finish()
+                            }) {
                                 Icon(imageVector = Icons.Default.ArrowBack, contentDescription = "Back")
                             }
                         })
