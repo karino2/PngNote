@@ -6,11 +6,14 @@ import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -188,16 +191,21 @@ class BookActivity : ComponentActivity() {
 
                         TopAppBar(title={
                             Row(modifier=Modifier.weight(5f), verticalAlignment = Alignment.CenterVertically) {
-                                RadioButton(selected = !isEraser, onClick = {
+                                IconToggleButton(checked = !isEraser, onCheckedChange = {
                                     isEraser = false
-                                })
-                                Text("Pen")
+                                } ) {
+                                    Icon(if (isEraser) Icons.Outlined.Edit else Icons.Filled.Edit, contentDescription = "Pen")
+                                }
 
                                 Spacer(modifier=Modifier.width(10.dp))
-                                RadioButton(selected = isEraser, onClick = {
+                                IconToggleButton(
+                                    modifier=Modifier.size(26.dp),
+                                    checked = isEraser, onCheckedChange = {
                                     isEraser = true
-                                })
-                                Text("Eraser")
+                                } ) {
+                                    Image(painter = painterResource(if(isEraser) R.mipmap.eraser_button_selected else R.mipmap.eraser_button),
+                                        contentDescription = "Eraser")
+                                }
                                 Spacer(modifier=Modifier.width(20.dp))
 
                                 IconButton(onClick={
