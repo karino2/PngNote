@@ -73,9 +73,7 @@ class BookIO(private val resolver: ContentResolver) {
 
     fun saveBitmap(page: BookPage, bitmap: Bitmap) {
         resolver.openOutputStream(page.file.uri, "wt").use {
-            BookActivity.bitmapLock.withLock {
-                bitmap.compress(Bitmap.CompressFormat.PNG, 80, it)
-            }
+            bitmap.compress(Bitmap.CompressFormat.PNG, 80, it)
         }
     }
 

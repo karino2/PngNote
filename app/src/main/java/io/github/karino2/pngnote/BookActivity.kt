@@ -30,6 +30,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.*
+import kotlin.concurrent.withLock
 
 class BookActivity : ComponentActivity() {
     companion object {
@@ -103,7 +104,12 @@ class BookActivity : ComponentActivity() {
             delay(SAVE_INTERVAL_MILL)
             if (isDirty && (getCurrentMills()- lastWritten) >= SAVE_INTERVAL_MILL) {
                 isDirty = false
-                bookIO.saveBitmap(book.getPage(pageIdx.value!!), pageBmp!!)
+                val tmpBmp = BookActivity.bitmapLock.withLock {
+                    val bmp = pageBmp!!
+                    bmp.copy(bmp.config, false)
+                }
+
+                bookIO.saveBitmap(book.getPage(pageIdx.value!!), tmpBmp)
             }
         }
     }
