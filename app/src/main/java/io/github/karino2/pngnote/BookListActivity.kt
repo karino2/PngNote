@@ -6,12 +6,10 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.*
+import androidx.compose.material.ButtonDefaults.textButtonColors
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Settings
@@ -23,12 +21,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Color.Companion.Black
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.documentfile.provider.DocumentFile
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import io.github.karino2.pngnote.ui.theme.PngNoteTheme
+import io.github.karino2.pngnote.ui.theme.booxTextButtonColors
 
 class BookListActivity : ComponentActivity() {
     private var _url : Uri? = null
@@ -125,12 +125,15 @@ class BookListActivity : ComponentActivity() {
 fun NewBookPopup(onNewBook : (bookName: String)->Unit, onDismiss: ()->Unit) {
     var textState by remember { mutableStateOf("") }
     val requester = FocusRequester()
+    val buttonColors = booxTextButtonColors()
     AlertDialog(
+        modifier=Modifier.border(width=1.dp, MaterialTheme.colors.onPrimary),
         onDismissRequest = onDismiss,
         text = {
             Column {
                 TextField(value = textState, onValueChange={textState = it},
                     modifier= Modifier
+                        .border(width=1.dp, MaterialTheme.colors.onPrimary)
                         .fillMaxWidth()
                         .focusRequester(requester),
                     placeholder = { Text("New book name")})
@@ -141,7 +144,8 @@ fun NewBookPopup(onNewBook : (bookName: String)->Unit, onDismiss: ()->Unit) {
             }
         },
         confirmButton = {
-            TextButton(onClick= {
+            TextButton(modifier=Modifier.border(width=1.dp, MaterialTheme.colors.onPrimary),
+                colors = buttonColors, onClick= {
                 onDismiss()
                 if(textState != "") {
                     onNewBook(textState)
@@ -151,7 +155,8 @@ fun NewBookPopup(onNewBook : (bookName: String)->Unit, onDismiss: ()->Unit) {
             }
         },
         dismissButton = {
-            TextButton(onClick= onDismiss) {
+            TextButton(modifier=Modifier.border(width=1.dp, MaterialTheme.colors.onPrimary),
+                colors = buttonColors, onClick= onDismiss) {
                 Text("CANCEL")
                 Spacer(modifier = Modifier.width(5.dp))
             }
