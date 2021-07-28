@@ -31,7 +31,6 @@ import io.github.karino2.pngnote.ui.theme.PngNoteTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import java.util.*
 import kotlin.concurrent.withLock
 
@@ -194,7 +193,13 @@ class BookActivity : ComponentActivity() {
                                 IconToggleButton(checked = !isEraser, onCheckedChange = {
                                     isEraser = false
                                 } ) {
-                                    Icon(if (isEraser) Icons.Outlined.Edit else Icons.Filled.Edit, contentDescription = "Pen")
+                                    val icon = if (isEraser) Icons.Outlined.Edit else Icons.Filled.Edit
+                                    val alpha = if (isEraser) LocalContentAlpha.current*0.7f else LocalContentAlpha.current
+                                    Icon(
+                                        icon,
+                                        contentDescription = "Pen",
+                                        tint = LocalContentColor.current.copy(alpha = alpha)
+                                    )
                                 }
 
                                 Spacer(modifier=Modifier.width(10.dp))
