@@ -171,7 +171,14 @@ class CanvasBoox(context: Context, var initialBmp: Bitmap? = null) : SurfaceView
          * @param holder The SurfaceHolder whose surface is being created.
          */
         override fun surfaceCreated(holder: SurfaceHolder) {
-            cleanSurfaceView()
+            bitmap?.let {bmp ->
+                holder.lockCanvas()?.let { lockCanvas->
+                    lockCanvas.drawColor(Color.WHITE)
+                    lockCanvas.drawBitmap(bmp, 0f, 0f, bmpPaint)
+                    holder.unlockCanvasAndPost(lockCanvas)
+                }
+                true
+            } ?: cleanSurfaceView()
         }
 
         /**
@@ -359,6 +366,7 @@ class CanvasBoox(context: Context, var initialBmp: Bitmap? = null) : SurfaceView
             refreshCount = count
         }
     }
+
 
     private fun refreshUI() {
         val (bmp, _) = ensureBitmap()
