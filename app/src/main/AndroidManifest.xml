@@ -25,6 +25,7 @@
             android:label="@string/app_name"
             android:theme="@style/Theme.PngNote.NoActionBar">
         </activity>
+        <activity android:name=".PageGridActivity" android:label="@string/app_name" android:theme="@style/Theme.PngNote.NoActionBar" />
     </application>
 
 </manifest>

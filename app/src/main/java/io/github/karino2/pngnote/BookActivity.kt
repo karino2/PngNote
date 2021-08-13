@@ -1,5 +1,6 @@
 package io.github.karino2.pngnote
 
+import android.content.Intent
 import android.graphics.Bitmap
 import android.net.Uri
 import android.os.Bundle
@@ -39,6 +40,8 @@ class BookActivity : ComponentActivity() {
         val bitmapLock = java.util.concurrent.locks.ReentrantLock()
     }
     private lateinit var dirUrl : Uri
+    private var initialPageIdx = 0
+
     private val bookDir by lazy {
         DocumentFile.fromTreeUri(this, dirUrl) ?: throw Exception("Cant open dir.")
     }
@@ -64,7 +67,7 @@ class BookActivity : ComponentActivity() {
 
 
     private val initCount = MutableLiveData(0)
-    private val pageIdx = MutableLiveData(0)
+    private val pageIdx by lazy { MutableLiveData(initialPageIdx) }
     private val pageNum = MutableLiveData(0)
     private val restartCount = MutableLiveData(0)
     private val canRedo = MutableLiveData(false)
@@ -167,11 +170,27 @@ class BookActivity : ComponentActivity() {
         }
     }
 
+    private fun gotoGridPage() {
+        Intent(this, PageGridActivity::class.java).also {
+            it.data = dirUrl
+            startActivity(it)
+        }
+    }
+
+    override fun onNewIntent(intent: Intent?) {
+        super.onNewIntent(intent)
+        intent?.let {
+            handlePageIdxArg(it)
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         intent?.let {
             dirUrl = it.data!!
+
+            handlePageIdxArg(it)
         }
 
         setContent {
@@ -227,6 +246,9 @@ class BookActivity : ComponentActivity() {
                                 }
                             }
                             Row(modifier=Modifier.weight(5f), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.End) {
+                                IconButton(onClick= { gotoGridPage() }) {
+                                    Icon(painter = painterResource(id = R.drawable.baseline_grid_view), contentDescription="Grid")
+                                }
                                 IconButton(modifier=Modifier.size(24.dp), onClick={ gotoFirstPage() }, enabled=idxState.value != 0) {
                                     Icon(painter = painterResource(id = R.drawable.outline_first_page), contentDescription = "First Page")
                                 }
@@ -263,7 +285,7 @@ class BookActivity : ComponentActivity() {
                             AndroidView(modifier = Modifier.size(maxWidth, maxHeight),
                                 factory = {context->
                                     val initBmp =bookIO.loadBitmapOrNull(book.getPage(pageIdx.value!!))
-                                    CanvasBoox(context, initBmp).apply {
+                                    CanvasBoox(context, initBmp, initialPageIdx).apply {
                                         firstInit()
                                         setOnUpdateListener { notifyBitmapUpdate(it) }
                                         setOnUndoStateListener { undo, redo-> notifyUndoStateChanged(undo, redo) }
@@ -293,6 +315,13 @@ class BookActivity : ComponentActivity() {
 
         initCount.value = 1
 
+    }
+
+    private fun handlePageIdxArg(intent: Intent) {
+        val argPageIdx = intent.getIntExtra("PAGE_IDX", -1)
+        if (argPageIdx != -1) {
+            initialPageIdx = argPageIdx
+        }
     }
 }
 

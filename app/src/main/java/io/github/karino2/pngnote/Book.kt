@@ -37,6 +37,9 @@ class Book(val bookDir: DocumentFile, val pages: List<DocumentFile>) {
     }
 
     fun getPage(idx: Int) = BookPage(pages[idx], idx)
+
+    val name : String
+        get() = bookDir.name ?: ""
 }
 
 
@@ -61,11 +64,15 @@ class BookIO(private val resolver: ContentResolver) {
     }
 
     fun loadThumbnail(bookDir: DocumentFile) : Bitmap? {
-        return bookDir.findFile("0000.png")?.let { file->
-            resolver.openFileDescriptor(file.uri, "r").use {
-                val option = BitmapFactory.Options().apply { inSampleSize = 3 }
-                BitmapFactory.decodeFileDescriptor(it!!.fileDescriptor, null, option)
-            }
+        return bookDir.findFile("0000.png")?.let { loadBitmapThumbnail(it, 3) }
+    }
+
+    fun loadPageThumbnail(file: DocumentFile) = loadBitmapThumbnail(file, 4)
+
+    private fun loadBitmapThumbnail(file: DocumentFile, sampleSize: Int) :Bitmap {
+        return resolver.openFileDescriptor(file.uri, "r").use {
+            val option = BitmapFactory.Options().apply { inSampleSize = sampleSize }
+            BitmapFactory.decodeFileDescriptor(it!!.fileDescriptor, null, option)
         }
     }
 

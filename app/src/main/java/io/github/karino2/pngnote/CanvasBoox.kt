@@ -15,7 +15,7 @@ import kotlin.concurrent.withLock
 import kotlin.math.abs
 
 
-class CanvasBoox(context: Context, var initialBmp: Bitmap? = null) : SurfaceView(context) {
+class CanvasBoox(context: Context, var initialBmp: Bitmap? = null, val initialPageIdx:Int  = 0) : SurfaceView(context) {
     var bitmap: Bitmap? = null
     private var bmpCanvas: Canvas? = null
 
@@ -390,7 +390,7 @@ class CanvasBoox(context: Context, var initialBmp: Bitmap? = null) : SurfaceView
         }
     }
 
-    private var pageIdx = 0
+    private var pageIdx = initialPageIdx
     fun onPageIdx(idx: Int, bitmapLoader: (Int)->Bitmap?) {
         if(pageIdx == idx)
             return
