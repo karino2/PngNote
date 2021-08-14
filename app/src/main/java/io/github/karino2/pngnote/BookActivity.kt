@@ -66,14 +66,13 @@ class BookActivity : ComponentActivity() {
     private fun showMessage(msg: String) = Toast.makeText(this, msg, Toast.LENGTH_LONG).show()
 
 
-    private val initCount = MutableLiveData(0)
     private val pageIdx by lazy { MutableLiveData(initialPageIdx) }
     private val pageNum = MutableLiveData(0)
-    private val restartCount = MutableLiveData(0)
     private val canRedo = MutableLiveData(false)
+    private var canUndo = MutableLiveData(false)
+
     private val undoCount = MutableLiveData(0)
     private val redoCount = MutableLiveData(0)
-    private val refreshCount = MutableLiveData(0)
 
     private var lastWritten = -1L
 
@@ -88,16 +87,10 @@ class BookActivity : ComponentActivity() {
     }
 
 
-    private var canUndo = false
     private fun notifyUndoStateChanged(canUndo1: Boolean, canRedo1: Boolean) {
-        val needRefresh = (canRedo.value != canRedo1)
-
-        canUndo = canUndo1
+        canUndo.value = canUndo1
         canRedo.value = canRedo1
 
-        if(needRefresh) {
-            refreshCount.value = refreshCount.value!! + 1
-        }
     }
 
     private fun getCurrentMills() = (Date()).time
@@ -125,11 +118,6 @@ class BookActivity : ComponentActivity() {
             isDirty = false
             bookIO.saveBitmap(book.getPage(pageIdx.value!!), pageBmp!!)
         }
-    }
-
-    override fun onRestart() {
-        super.onRestart()
-        restartCount.value = restartCount.value!!+1
     }
 
     override fun onStop() {
@@ -201,11 +189,10 @@ class BookActivity : ComponentActivity() {
                         var isEraser by remember { mutableStateOf(false) }
                         val idxState = pageIdx.observeAsState(0)
                         val pageNumState = pageNum.observeAsState(0)
-                        val restartCountState = restartCount.observeAsState(0)
                         val canRedoState = canRedo.observeAsState(false)
+                        val canUndoState = canUndo.observeAsState(false)
                         val undoCountState = undoCount.observeAsState(0)
                         val redoCountState = redoCount.observeAsState(0)
-                        val refreshCountState = refreshCount.observeAsState(0)
 
                         TopAppBar(title={
                             Row(modifier=Modifier.weight(5f), verticalAlignment = Alignment.CenterVertically) {
@@ -232,13 +219,7 @@ class BookActivity : ComponentActivity() {
                                 }
                                 Spacer(modifier=Modifier.width(20.dp))
 
-                                IconButton(onClick={
-                                    if(canUndo) {
-                                        undoCount.value = undoCount.value!!+1
-                                    } else {
-                                        showMessage("Not yet undo-able.")
-                                    }
-                                   }, enabled=true) {
+                                IconButton(onClick={ undoCount.value = undoCount.value!!+1 }, enabled=canUndoState.value) {
                                     Icon(painter = painterResource(id = R.drawable.outline_undo), contentDescription = "Undo")
                                 }
                                 IconButton(onClick={ redoCount.value = redoCount.value!!+1  }, enabled=canRedoState.value) {
@@ -281,18 +262,15 @@ class BookActivity : ComponentActivity() {
                             }
                         })
                         BoxWithConstraints {
-                            val initState = initCount.observeAsState(0)
                             AndroidView(modifier = Modifier.size(maxWidth, maxHeight),
                                 factory = {context->
                                     val initBmp =bookIO.loadBitmapOrNull(book.getPage(pageIdx.value!!))
                                     CanvasBoox(context, initBmp, initialPageIdx).apply {
-                                        firstInit()
                                         setOnUpdateListener { notifyBitmapUpdate(it) }
                                         setOnUndoStateListener { undo, redo-> notifyUndoStateChanged(undo, redo) }
                                     }
                                 },
                                 update = {
-                                    it.ensureInit(initState.value)
                                     it.penOrEraser(!isEraser)
                                     it.onPageIdx(idxState.value, bitmapLoader= {idx->
                                         bookIO.loadBitmapOrNull(book.getPage(idx)).also {
@@ -300,10 +278,8 @@ class BookActivity : ComponentActivity() {
                                             pageBmp = it
                                         }
                                     })
-                                    it.onRestart(restartCountState.value!!)
                                     it.undo(undoCountState.value)
                                     it.redo(redoCountState.value)
-                                    it.refreshUI(refreshCountState.value)
                                 }
                             )
                         }
@@ -312,9 +288,6 @@ class BookActivity : ComponentActivity() {
                 }
             }
         }
-
-        initCount.value = 1
-
     }
 
     private fun handlePageIdxArg(intent: Intent) {
