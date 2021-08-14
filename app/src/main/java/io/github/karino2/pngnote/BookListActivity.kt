@@ -30,14 +30,15 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.documentfile.provider.DocumentFile
-import androidx.lifecycle.LiveData
-import androidx.lifecycle.MutableLiveData
-import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.*
 import io.github.karino2.pngnote.ui.theme.PngNoteTheme
 import io.github.karino2.pngnote.ui.theme.booxTextButtonColors
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+
+
+
 
 class BookListActivity : ComponentActivity() {
     private var _url : Uri? = null
@@ -65,20 +66,23 @@ class BookListActivity : ComponentActivity() {
     }
 
     private val files = MutableLiveData(emptyList<DocumentFile>())
-    private val thumbnails = MutableLiveData(emptyList<Bitmap>())
-
-    private fun reloadBookList(url: Uri) {
-        listFiles(url).also { flist->
-            thumbnails.value = flist.map { blankBitmap }
-            files.value = flist
-            lifecycleScope.launch(Dispatchers.IO) {
+    private val thumbnails =  Transformations.switchMap(files) { flist ->
+        liveData {
+            emit(flist.map { blankBitmap })
+            withContext(lifecycleScope.coroutineContext + Dispatchers.IO) {
                 val thumbs = flist.map {
                     bookIO.loadThumbnail(it) ?: blankBitmap
                 }
                 withContext(Dispatchers.Main) {
-                    thumbnails.value = thumbs
+                    emit(thumbs)
                 }
             }
+        }
+    }
+
+    private fun reloadBookList(url: Uri) {
+        listFiles(url).also { flist->
+            files.value = flist
         }
     }
 
