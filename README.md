@@ -30,6 +30,7 @@ Also, there is a version for non-BOOX, standard Android devices.
 ### Code
 
 All codes are distributed under the MIT license.
+
 Copyright: karino2
 
 ### Icon assets
