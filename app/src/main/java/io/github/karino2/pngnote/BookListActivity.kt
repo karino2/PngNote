@@ -26,6 +26,7 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Color.Companion.Black
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -131,6 +132,8 @@ class BookListActivity : ComponentActivity() {
                         IconButton(onClick={ getRootDirUrl.launch(null) }) {
                             Icon(Icons.Filled.Settings, "Settings")
                         }
+                    }, navigationIcon = {
+                        Image(painterResource(id = R.mipmap.ic_launcher), null)
                     })
                     if (showDialog.value) {
                         NewBookPopup(onNewBook = { addNewBook(it) }, onDismiss= { showDialog.value = false })
@@ -235,12 +238,16 @@ fun BookList(bookDirs: LiveData<List<DocumentFile>>, thumbnails: LiveData<List<B
 @Composable
 fun TwoBook(books: List<DocumentFile>, thumbnails: List<Bitmap>, leftIdx: Int, bookSize : Pair<Dp, Dp>, gotoBook : (dir: DocumentFile)->Unit) {
     Row {
-        Card(modifier=Modifier.weight(1f).padding(5.dp), border= BorderStroke(2.dp, Color.Black)) {
+        Card(modifier= Modifier
+            .weight(1f)
+            .padding(5.dp), border= BorderStroke(2.dp, Color.Black)) {
             val book =books[leftIdx]
             Book(book, bookSize, thumbnails[leftIdx], onOpenBook = { gotoBook(book) })
         }
         if (leftIdx+1 < books.size) {
-            Card(modifier=Modifier.weight(1f).padding(5.dp), border= BorderStroke(2.dp, Color.Black)) {
+            Card(modifier= Modifier
+                .weight(1f)
+                .padding(5.dp), border= BorderStroke(2.dp, Color.Black)) {
                 val book =books[leftIdx+1]
                 Book(book, bookSize, thumbnails[leftIdx+1], onOpenBook = { gotoBook(book) })
             }
@@ -254,7 +261,9 @@ fun TwoBook(books: List<DocumentFile>, thumbnails: List<Bitmap>, leftIdx: Int, b
 fun Book(bookDir: DocumentFile, bookSize : Pair<Dp, Dp>, thumbnail: Bitmap, onOpenBook : ()->Unit) {
     Column(horizontalAlignment = Alignment.CenterHorizontally, modifier= Modifier
         .clickable(onClick = onOpenBook)) {
-        Image(modifier= Modifier.size(bookSize.first, bookSize.second).padding(5.dp, 10.dp), bitmap = thumbnail.asImageBitmap(), contentDescription = "Book Image")
+        Image(modifier= Modifier
+            .size(bookSize.first, bookSize.second)
+            .padding(5.dp, 10.dp), bitmap = thumbnail.asImageBitmap(), contentDescription = "Book Image")
         Text(bookDir.name!!, fontSize = 20.sp)
     }
 }
