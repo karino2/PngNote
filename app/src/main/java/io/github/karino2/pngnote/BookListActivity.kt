@@ -26,6 +26,7 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Color.Companion.Black
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -131,6 +132,8 @@ class BookListActivity : ComponentActivity() {
                         IconButton(onClick={ getRootDirUrl.launch(null) }) {
                             Icon(Icons.Filled.Settings, "Settings")
                         }
+                    }, navigationIcon = {
+                        Image(painterResource(id = R.mipmap.ic_launcher), null)
                     })
                     if (showDialog.value) {
                         NewBookPopup(onNewBook = { addNewBook(it) }, onDismiss= { showDialog.value = false })
