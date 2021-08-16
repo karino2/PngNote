@@ -1,3 +1,5 @@
+![PngNote icon](https://github.com/karino2/PngNote/raw/main/images/ic_launcher.png)
+
 PngNote is a free, open-source, handwriting note-taking app based on [BOOX SDK](https://github.com/onyx-intl/OnyxAndroidDemo/blob/master/doc/Onyx-Pen-SDK.md).
 
 Use BOOX SDK: Leverage raw-rendering feature, similar stylus lag to the pre-installed note app.
@@ -17,6 +19,10 @@ I think most of Onyx devices except for the Poke series are working.
 Also, there is a version for non-BOOX, standard Android devices.
 
 # Screen shots
+
+![PngNote icon](https://github.com/karino2/PngNote/raw/main/images/Book.png)
+![PngNote icon](https://github.com/karino2/PngNote/raw/main/images/BookList.png)
+![PngNote icon](https://github.com/karino2/PngNote/raw/main/images/PageGrid.png)
 
 
 
