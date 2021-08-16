@@ -2,21 +2,29 @@
 
 PngNote is a free, open-source, handwriting note-taking app based on [BOOX SDK](https://github.com/onyx-intl/OnyxAndroidDemo/blob/master/doc/Onyx-Pen-SDK.md).
 
-Use BOOX SDK: Leverage raw-rendering feature, similar stylus lag to the pre-installed note app.
-Open-source.
-Simple, minimum features: Just pencil, erasure, undo, redo.
-Open data format: Use serial number png files with plain directories. Easy to share data by any folder-sync app. No need to export!
+- Use BOOX SDK: Leverage raw-rendering feature, similar stylus lag to the pre-installed note app.
+- Open-source.
+- Simple, minimum features: Just pencil, erasure, undo, redo.
+- Open data format: Use serial number png files with plain directories. Easy to share data by any folder-sync app. No need to export!
 
 # Supported device
 
 Here are the supported devices I heard.
-BOOX Note3
-Nova2
+
+- BOOX Note3
+- Nova2
+
 Following devices are not working
-Poke3
+
+- Poke3
+
 I think most of Onyx devices except for the Poke series are working.
 
-Also, there is a version for non-BOOX, standard Android devices.
+Also, there is a version for non-BOOX, standard Android devices in branch. (I will put apk if someone want)
+
+# Download apk
+
+The apks of PngNote are at [https://github.com/karino2/PngNote/releases](https://github.com/karino2/PngNote/releases)
 
 # Screen shots
 
