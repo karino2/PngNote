@@ -20,10 +20,9 @@ Also, there is a version for non-BOOX, standard Android devices.
 
 # Screen shots
 
-![PngNote icon](https://github.com/karino2/PngNote/raw/main/images/Book.png)
 ![PngNote icon](https://github.com/karino2/PngNote/raw/main/images/BookList.png)
+![PngNote icon](https://github.com/karino2/PngNote/raw/main/images/Book.png)
 ![PngNote icon](https://github.com/karino2/PngNote/raw/main/images/PageGrid.png)
-
 
 
 # Licensing
