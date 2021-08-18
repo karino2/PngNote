@@ -12,6 +12,8 @@ PngNote is a free, open-source, handwriting note-taking app based on [BOOX SDK](
 Here are the supported devices I heard.
 
 - BOOX Note3
+- BOOX Note2
+- BOOX Note Air
 - Nova2
 
 Following devices are not working
