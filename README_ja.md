@@ -13,6 +13,8 @@ PngNoteは、BOOX用のフリーでオープンソースな手書きノートア
 以下のデバイスでは動く、と聞いています。
 
 - BOOX Note3
+- BOOX Note2
+- BOOX Note Air
 - Nova2
 
 以下のデバイスでは動かないそうです。
