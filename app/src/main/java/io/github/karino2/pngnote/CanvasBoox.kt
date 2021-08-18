@@ -4,8 +4,8 @@ import android.content.Context
 import android.graphics.*
 import android.view.SurfaceHolder
 import android.view.SurfaceView
-import android.view.View
 import android.view.View.OnLayoutChangeListener
+import com.onyx.android.sdk.api.device.epd.EpdController
 import com.onyx.android.sdk.pen.RawInputCallback
 import com.onyx.android.sdk.pen.TouchHelper
 import com.onyx.android.sdk.pen.data.TouchPoint
@@ -15,7 +15,7 @@ import kotlin.concurrent.withLock
 import kotlin.math.abs
 
 
-class CanvasBoox(context: Context, var initialBmp: Bitmap? = null, val initialPageIdx:Int  = 0) : SurfaceView(context) {
+class CanvasBoox(context: Context, var initialBmp: Bitmap? = null, initialPageIdx:Int  = 0) : SurfaceView(context) {
     var bitmap: Bitmap? = null
     private var bmpCanvas: Canvas? = null
 
@@ -89,7 +89,7 @@ class CanvasBoox(context: Context, var initialBmp: Bitmap? = null, val initialPa
 
     private var initCount = 0
 
-    private val inputCallback = object: RawInputCallback() {
+    private val inputCallback : RawInputCallback = object: RawInputCallback() {
         override fun onBeginRawDrawing(p0: Boolean, p1: TouchPoint?) {
         }
 
@@ -108,22 +108,55 @@ class CanvasBoox(context: Context, var initialBmp: Bitmap? = null, val initialPa
                 refreshUI()
         }
 
+        private fun getCurrentMills() = (Date()).time
+        val eraseAccPoints = ArrayList<TouchPoint>() // accumulate points for erase
+        var lastSave = 0L
+
+        // refresh every 300msec or 100 points.
+        val needUpdate: Boolean
+            get() = eraseAccPoints.size >=100 || (getCurrentMills()-lastSave) > 300L
+
         override fun onBeginRawErasing(p0: Boolean, p1: TouchPoint?) {
+            // Log.d("PngNote", "erase begin")
+            EpdController.enablePost(this@CanvasBoox, 1)
+            clearEraseAccPoints()
+
+            eraseAccPoints.add(p1!!)
+            updateBmpToSurface()
+        }
+
+        private fun clearEraseAccPoints() {
+            lastSave = getCurrentMills()
+            eraseAccPoints.clear()
         }
 
         override fun onEndRawErasing(p0: Boolean, p1: TouchPoint?) {
         }
 
         override fun onRawErasingTouchPointMoveReceived(p0: TouchPoint?) {
+            eraseAccPoints.add(p0!!)
+            if(needUpdate) {
+                // Log.d("PngNote", "erase update")
+                eraseByPointsAndUpdate()
+            }
         }
 
-        override fun onRawErasingTouchPointListReceived(p0: TouchPointList?) {
+        override fun onRawErasingTouchPointListReceived(plist: TouchPointList) {
+            // Log.d("PngNote", "point list, update")
+            eraseByPointsAndUpdate()
+        }
+
+        private fun eraseByPointsAndUpdate() {
+            drawOrErasePointsToBitmap(eraseAccPoints, eraserPaint)
+            updateBmpToSurface()
+
+            clearEraseAccPoints()
         }
 
     }
 
     private val touchHelper by lazy { TouchHelper.create(this, inputCallback) }
-    private val layoutChangedListener : View.OnLayoutChangeListener by lazy {
+    private val layoutChangedListener : OnLayoutChangeListener by lazy {
         OnLayoutChangeListener { v, left, top, right, bottom, oldLeft, oldTop, oldRight, oldBottom ->
             /**
              * Called when the layout bounds of a view changes due to layout processing.
@@ -269,9 +302,16 @@ class CanvasBoox(context: Context, var initialBmp: Bitmap? = null, val initialPa
     }
 
     private fun drawPointsToBitmap(points: List<TouchPoint>) {
+        val paint = if(isPencil) pathPaint else eraserPaint
+        drawOrErasePointsToBitmap(points, paint)
+    }
+
+    private fun drawOrErasePointsToBitmap(
+        points: List<TouchPoint>,
+        paint: Paint
+    ) {
         val (targetBmp, canvas) = ensureBitmap()
 
-        val paint = if(isPencil) pathPaint else eraserPaint
         val path = Path()
         val prePoint = PointF(points[0].x, points[0].y)
         path.moveTo(prePoint.x, prePoint.y)
@@ -369,15 +409,19 @@ class CanvasBoox(context: Context, var initialBmp: Bitmap? = null, val initialPa
 
 
     private fun refreshUI() {
+        updateBmpToSurface()
+
+        touchHelper.setRawDrawingEnabled(false)
+        touchHelper.setRawDrawingEnabled(true)
+    }
+
+    private fun updateBmpToSurface() {
         val (bmp, _) = ensureBitmap()
-        holder.lockCanvas()?.let { lockCanvas->
+        holder.lockCanvas()?.let { lockCanvas ->
             lockCanvas.drawColor(Color.WHITE)
             lockCanvas.drawBitmap(bmp, 0f, 0f, bmpPaint)
             holder.unlockCanvasAndPost(lockCanvas)
         }
-
-        touchHelper.setRawDrawingEnabled(false)
-        touchHelper.setRawDrawingEnabled(true)
     }
 
     fun penOrEraser(isPen: Boolean ) {
