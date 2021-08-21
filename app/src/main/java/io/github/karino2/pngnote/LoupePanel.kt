@@ -64,9 +64,16 @@ class LoupePanel(private val toolHeight:Int, private val size: Size, private val
     private var moveOrigin = PointF()
     private var moveOriginY = y
 
+    // ignore finger in paintArea
+    var ignoreFinger = true
+
+
+    // only effective for stylus event.
+    private fun isEffective(isStylus: Boolean) = !ignoreFinger || isStylus
+
     // gp: point based on holder coordinate.
     // return true if handled.
-    fun onTouchDown(gp: PointF) : Boolean {
+    fun onTouchDown(gp: PointF, isStylus: Boolean) : Boolean {
         when(state) {
             // if down come again while handling previous drag.
             // send up to finish prev dragging.
@@ -83,6 +90,10 @@ class LoupePanel(private val toolHeight:Int, private val size: Size, private val
             return true
         }
         if (isInsidePaintArea(gp)) {
+            // just ignore finger inside paint area.
+            if (!isEffective(isStylus))
+                return true
+
             state = State.DRAWING
             updateNavigatorRect()
             val localPt = toLocalPoint(gp)

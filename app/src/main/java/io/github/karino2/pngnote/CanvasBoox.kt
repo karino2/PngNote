@@ -180,6 +180,10 @@ class CanvasBoox(context: Context, var initialBmp: Bitmap? = null, initialPageId
 
     private val tmpPoint = PointF()
 
+    // 1 is finter, 2 is stylus.
+    private val MotionEvent.isStylus : Boolean
+        get() = this.getToolType(0) == 2
+
     override fun onTouchEvent(event: MotionEvent): Boolean {
         if(navigatorState == NavigatorState.MOVING) {
             when (event.action) {
@@ -210,7 +214,7 @@ class CanvasBoox(context: Context, var initialBmp: Bitmap? = null, initialPageId
 
         when (event.action) {
             MotionEvent.ACTION_DOWN -> {
-                if (true == loupePanel?.onTouchDown(tmpPoint))
+                if (true == loupePanel?.onTouchDown(tmpPoint, event.isStylus))
                     return true
 
                 if(placeNavigator(event.x, event.y)) {
