@@ -2,6 +2,7 @@ package io.github.karino2.pngnote
 
 import android.content.Context
 import android.graphics.*
+import android.util.Size
 import android.view.MotionEvent
 import android.view.View
 import java.util.*
@@ -9,8 +10,13 @@ import kotlin.concurrent.withLock
 
 
 class CanvasBoox(context: Context, var initialBmp: Bitmap? = null, initialPageIdx:Int  = 0) : View(context) {
+    // bitmap committed.
     var bitmap: Bitmap? = null
     private lateinit var bmpCanvas: Canvas
+
+    // bitmap for drawing.
+    var draftBitmap: Bitmap? = null
+    private lateinit var draftCanvas: Canvas
 
     private val pencilWidth = 3f
     private val eraserWidth = 30f
@@ -100,8 +106,23 @@ class CanvasBoox(context: Context, var initialBmp: Bitmap? = null, initialPageId
         tmpInval.set(newLeft, newTop, newRight, newBottom)
     }
 
+    var loupePanel: LoupePanel? = null
+    private fun ensureLoupePanel(w: Int, h:Int) {
+        loupePanel?.let {
+            return
+        }
+        val height = h/3
+
+        loupePanel = LoupePanel(height/5, Size(w, height), this).apply {
+            // try place to bottom. Adjust is called inside trySetY.
+            trySetY(h)
+        }
+    }
+
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
         super.onSizeChanged(w, h, oldw, oldh)
+
+        ensureLoupePanel(w, h)
 
         bitmap?.let { oldbmp ->
             createNewCanvas(w, h)
@@ -120,9 +141,15 @@ class CanvasBoox(context: Context, var initialBmp: Bitmap? = null, initialPageId
 
     private fun createNewCanvas(w: Int, h: Int) {
         val bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
+        val draftBmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
         bmp.eraseColor(Color.WHITE)
+        draftBmp.eraseColor(Color.WHITE)
         bitmap = bmp
         bmpCanvas = Canvas(bmp)
+
+        draftBitmap = draftBmp
+        draftCanvas = Canvas(draftBmp)
+
     }
 
     private fun drawBitmap(srcBitmap: Bitmap?) {
@@ -136,6 +163,97 @@ class CanvasBoox(context: Context, var initialBmp: Bitmap? = null, initialPageId
         }
     }
 
+    enum class NavigatorState {
+        DORMANT, MOVING
+    }
+
+    private var navigatorState = NavigatorState.DORMANT
+
+    // touch pos
+    private val navigatorDraggingStartTouch = PointF()
+    // navigator origin for staring.
+    private val navigatorDraggingStartOrigin = PointF()
+
+    private fun adjustNavigatorOriginX(x: Float) = x.coerceIn(0F, width - loupePanel!!.navigatorRect.width())
+    private fun adjustNavigatorOriginY(y: Float) = y.coerceIn(0F, height - loupePanel!!.navigatorRect.height())
+
+    private fun placeNavigator(cx: Float, cy: Float) : Boolean {
+        return loupePanel?.let { lp->
+            val originX = adjustNavigatorOriginX(cx-lp.navigatorRect.width()/2)
+            val originY = adjustNavigatorOriginY(cy-lp.navigatorRect.height()/2)
+            navigatorDraggingStartOrigin.set(originX, originY)
+            lp.placeNavigator(navigatorDraggingStartOrigin)
+            navigatorDraggingStartTouch.set(cx, cy)
+            true
+        } ?: false
+    }
+
+
+    private val tmpPoint = PointF()
+
+    override fun onTouchEvent(event: MotionEvent): Boolean {
+        if(navigatorState == NavigatorState.MOVING) {
+            when (event.action) {
+                MotionEvent.ACTION_DOWN -> {
+                    if(placeNavigator(event.x, event.y)) {
+                        navigatorState = NavigatorState.MOVING
+                        invalidate()
+                        return true
+                    }
+                    return false
+                }
+                MotionEvent.ACTION_MOVE -> {
+                    moveNavigator(event)
+                    invalidate()
+                    return true
+                }
+                MotionEvent.ACTION_UP -> {
+                    moveNavigator(event)
+                    invalidate()
+                    navigatorState = NavigatorState.DORMANT
+                    return true
+                }
+            }
+        }
+
+
+        tmpPoint.set(event.x, event.y)
+
+        when (event.action) {
+            MotionEvent.ACTION_DOWN -> {
+                if (true == loupePanel?.onTouchDown(tmpPoint))
+                    return true
+
+                if(placeNavigator(event.x, event.y)) {
+                    navigatorState = NavigatorState.MOVING
+                    invalidate()
+                    return true
+                }
+                // fall through
+            }
+            MotionEvent.ACTION_MOVE -> {
+                if (true == loupePanel?.onTouchMove(tmpPoint))
+                    return true
+                // fall through
+            }
+            MotionEvent.ACTION_UP -> {
+                if (true == loupePanel?.onTouchUp(tmpPoint))
+                    return true
+                // fall through
+            }
+        }
+        return super.onTouchEvent(event)
+    }
+
+    private fun moveNavigator(event: MotionEvent) {
+        val diffX = event.x - navigatorDraggingStartTouch.x
+        val diffY = event.y - navigatorDraggingStartTouch.y
+        val candX = navigatorDraggingStartOrigin.x + diffX
+        val candY = navigatorDraggingStartOrigin.y + diffY
+        tmpPoint.set(adjustNavigatorOriginX(candX), adjustNavigatorOriginY(candY))
+        loupePanel!!.placeNavigator(tmpPoint)
+    }
+
     private var downHandled = false
     private var prevX = 0f
     private var prevY = 0f
@@ -144,65 +262,61 @@ class CanvasBoox(context: Context, var initialBmp: Bitmap? = null, initialPageId
     private val path = Path()
 
 
-    override fun onTouchEvent(event: MotionEvent): Boolean {
-        val x = event.x
-        val y = event.y
-        when (event.action) {
-            MotionEvent.ACTION_DOWN -> {
-                downHandled = true
-                path.reset()
-                path.moveTo(x, y)
+
+    // onPseudoTouchXXX is called from LoupePanel.
+    fun onPseudoTouchDown(x: Float, y: Float) {
+        downHandled = true
+        path.reset()
+        path.moveTo(x, y)
+        prevX = x
+        prevY = y
+        invalidate()
+    }
+
+    fun onPseudoTouchMove(x: Float, y: Float) {
+        if (downHandled) {
+            val dx = Math.abs(x - prevX)
+            val dy = Math.abs(y - prevY)
+            if (dx >= TOUCH_TOLERANCE || dy >= TOUCH_TOLERANCE) {
+                path.quadTo(prevX, prevY, (x + prevX) / 2, (y + prevY) / 2)
                 prevX = x
                 prevY = y
                 invalidate()
-                return true
-            }
-            MotionEvent.ACTION_MOVE -> {
-                if (downHandled) {
-                    val dx = Math.abs(x - prevX)
-                    val dy = Math.abs(y - prevY)
-                    if (dx >= TOUCH_TOLERANCE || dy >= TOUCH_TOLERANCE) {
-                        path.quadTo(prevX, prevY, (x + prevX) / 2, (y + prevY) / 2)
-                        prevX = x
-                        prevY = y
-                        invalidate()
-                    }
-                    return true
-                }
-            }
-            MotionEvent.ACTION_UP -> {
-                if (downHandled) {
-                    downHandled = false
-                    path.lineTo(x, y)
-
-
-                    val region = pathBound(path)
-                    val undo = Bitmap.createBitmap(
-                        bitmap!!,
-                        region.left,
-                        region.top,
-                        region.width(),
-                        region.height()
-                    )
-                    drawPathToCanvas(bmpCanvas, path)
-                    val redo = Bitmap.createBitmap(
-                        bitmap!!,
-                        region.left,
-                        region.top,
-                        region.width(),
-                        region.height()
-                    )
-                    undoList.pushUndoCommand(region.left, region.top, undo, redo)
-
-                    notifyUndoStateChanged()
-                    updateBmpListener(bitmap!!)
-                    path.reset()
-                    invalidate()
-                }
             }
         }
-        return super.onTouchEvent(event)
     }
+
+    fun onPseudoTouchUp(x: Float, y: Float) {
+        if (downHandled) {
+            downHandled = false
+            path.lineTo(x, y)
+
+
+            val region = pathBound(path)
+            val undo = Bitmap.createBitmap(
+                bitmap!!,
+                region.left,
+                region.top,
+                region.width(),
+                region.height()
+            )
+            drawPathToCanvas(bmpCanvas, path)
+            val redo = Bitmap.createBitmap(
+                bitmap!!,
+                region.left,
+                region.top,
+                region.width(),
+                region.height()
+            )
+            undoList.pushUndoCommand(region.left, region.top, undo, redo)
+
+            notifyUndoStateChanged()
+            updateBmpListener(bitmap!!)
+            path.reset()
+            invalidate()
+        }
+    }
+
 
     fun drawPathToCanvas(canvas: Canvas, path: Path) {
         val paint = if(isPencil) pathPaint else eraserPaint
@@ -210,9 +324,13 @@ class CanvasBoox(context: Context, var initialBmp: Bitmap? = null, initialPageId
     }
 
     override fun onDraw(canvas: Canvas) {
+        draftCanvas.drawBitmap(bitmap!!, 0f, 0f, bmpPaint)
+        drawPathToCanvas(draftCanvas, path)
+
         canvas.drawColor(Color.WHITE)
-        canvas.drawBitmap(bitmap!!, 0f, 0f, bmpPaint)
-        drawPathToCanvas(canvas, path)
+        canvas.drawBitmap(draftBitmap!!, 0f, 0f, bmpPaint)
+
+        loupePanel?.let { it.draw(canvas) }
     }
 
     private var isPencil = true

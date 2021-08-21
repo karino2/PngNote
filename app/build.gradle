@@ -8,11 +8,11 @@ android {
     buildToolsVersion "30.0.3"
 
     defaultConfig {
-        applicationId "io.github.karino2.pngnote"
+        applicationId "io.github.karino2.pngnoteloupe"
         minSdk 24
         targetSdk 30
-        versionCode 2
-        versionName "0.2"
+        versionCode 1
+        versionName "0.1"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
