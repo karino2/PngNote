@@ -95,7 +95,7 @@ class LoupePanel(private val toolHeight:Int, private val size: Size, private val
     }
 
     private fun adjustYInsideView() {
-        y = min(holder.height - (toolHeight+size.height), y)
+        y = y.coerceIn(0, holder.height - (toolHeight+size.height))
     }
 
     fun trySetY(yCandidate : Int) {
