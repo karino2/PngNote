@@ -9,7 +9,7 @@ import java.lang.Integer.min
 class LoupePanel(private val toolHeight:Int, private val size: Size, private val holder: CanvasBoox) {
     private var x = 5
     var y = 5
-    var scale = 3/2F
+    var scale = 5/3F
 
     // in holder coordinate.
     private val navigatorPoint = PointF()
