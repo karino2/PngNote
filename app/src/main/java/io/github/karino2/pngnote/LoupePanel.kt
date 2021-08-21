@@ -174,8 +174,8 @@ class LoupePanel(private val toolHeight:Int, private val size: Size, private val
         color = Color.MAGENTA
     }
 
-    val tmpRect = Rect()
-    fun draw(canvas: Canvas) {
+    private val tmpRect = Rect()
+    fun draw(canvas: Canvas, writing: Path, pathPaint: Paint) {
         updateNavigatorRect()
         canvas.drawRect(navigatorRect, navigatorPaint)
 
@@ -189,10 +189,29 @@ class LoupePanel(private val toolHeight:Int, private val size: Size, private val
         tmpRect.set(x, y+toolHeight, x+size.width, y+toolHeight+size.height)
         canvas.drawRect(tmpRect, backgroundFillPaint)
 
-        holder.draftBitmap?.let {holderBmp ->
+        holder.bitmap?.let {holderBmp ->
             canvas.drawBitmap(holderBmp, navigatorRect.toRect(), tmpRect, null)
         }
 
+
+        drawPath(canvas, writing, pathPaint)
         canvas.drawRect(tmpRect, borderPaint)
+    }
+
+    private fun drawPath(
+        canvas: Canvas,
+        writing: Path,
+        pathPaint: Paint
+    ) {
+        val saveCount = canvas.saveCount
+        canvas.save()
+        canvas.clipRect(x, y+toolHeight, x+size.width, y+toolHeight+size.height)
+
+        canvas.translate(x - navigatorPoint.x * scale, y + toolHeight - navigatorPoint.y * scale)
+        canvas.scale(scale, scale)
+
+        canvas.drawPath(writing, pathPaint)
+
+        canvas.restoreToCount(saveCount)
     }
 }

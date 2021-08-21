@@ -5,7 +5,6 @@ import android.graphics.*
 import android.util.Size
 import android.view.MotionEvent
 import android.view.View
-import java.util.*
 import kotlin.concurrent.withLock
 
 
@@ -13,10 +12,6 @@ class CanvasBoox(context: Context, var initialBmp: Bitmap? = null, initialPageId
     // bitmap committed.
     var bitmap: Bitmap? = null
     private lateinit var bmpCanvas: Canvas
-
-    // bitmap for drawing.
-    var draftBitmap: Bitmap? = null
-    private lateinit var draftCanvas: Canvas
 
     private val pencilWidth = 3f
     private val eraserWidth = 30f
@@ -141,15 +136,9 @@ class CanvasBoox(context: Context, var initialBmp: Bitmap? = null, initialPageId
 
     private fun createNewCanvas(w: Int, h: Int) {
         val bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
-        val draftBmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
         bmp.eraseColor(Color.WHITE)
-        draftBmp.eraseColor(Color.WHITE)
         bitmap = bmp
         bmpCanvas = Canvas(bmp)
-
-        draftBitmap = draftBmp
-        draftCanvas = Canvas(draftBmp)
-
     }
 
     private fun drawBitmap(srcBitmap: Bitmap?) {
@@ -319,18 +308,20 @@ class CanvasBoox(context: Context, var initialBmp: Bitmap? = null, initialPageId
 
 
     fun drawPathToCanvas(canvas: Canvas, path: Path) {
-        val paint = if(isPencil) pathPaint else eraserPaint
+        val paint = paintPencilOrEraser()
         canvas.drawPath(path, paint)
     }
 
+    private fun paintPencilOrEraser(): Paint {
+        return if (isPencil) pathPaint else eraserPaint
+    }
+
     override fun onDraw(canvas: Canvas) {
-        draftCanvas.drawBitmap(bitmap!!, 0f, 0f, bmpPaint)
-        drawPathToCanvas(draftCanvas, path)
-
         canvas.drawColor(Color.WHITE)
-        canvas.drawBitmap(draftBitmap!!, 0f, 0f, bmpPaint)
+        canvas.drawBitmap(bitmap!!, 0f, 0f, bmpPaint)
+        drawPathToCanvas(canvas, path)
 
-        loupePanel?.let { it.draw(canvas) }
+        loupePanel?.let { it.draw(canvas, path, paintPencilOrEraser()) }
     }
 
     private var isPencil = true
