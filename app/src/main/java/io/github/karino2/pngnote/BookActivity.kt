@@ -74,6 +74,8 @@ class BookActivity : ComponentActivity() {
     private val undoCount = MutableLiveData(0)
     private val redoCount = MutableLiveData(0)
 
+    private val isViewMode = mutableStateOf(false)
+
     private var lastWritten = -1L
 
     private var pageBmp: Bitmap? = null
@@ -227,6 +229,10 @@ class BookActivity : ComponentActivity() {
                                 }
                             }
                             Row(modifier=Modifier.weight(5f), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.End) {
+                                IconToggleButton(checked = isViewMode.value, onCheckedChange = { newVal-> isViewMode.value = newVal  } ) {
+                                    val iconId = if(isViewMode.value) R.drawable.outline_visibility else R.drawable.outline_visibility_off
+                                    Icon(painter = painterResource(id = iconId), contentDescription="ViewMode")
+                                }
                                 IconButton(onClick= { gotoGridPage() }) {
                                     Icon(painter = painterResource(id = R.drawable.baseline_grid_view), contentDescription="Grid")
                                 }
@@ -280,6 +286,7 @@ class BookActivity : ComponentActivity() {
                                     })
                                     it.undo(undoCountState.value)
                                     it.redo(redoCountState.value)
+                                    it.isViewMode = isViewMode.value
                                 }
                             )
                         }

@@ -63,6 +63,14 @@ class CanvasBoox(context: Context, var initialBmp: Bitmap? = null, initialPageId
         }
     }
 
+    var isViewMode = false
+        set(value) {
+            if (field != value) {
+                field = value
+                invalidate()
+            }
+        }
+
     private fun notifyUndoStateChanged() {
         undoStateListener(canUndo, canRedo)
     }
@@ -185,6 +193,9 @@ class CanvasBoox(context: Context, var initialBmp: Bitmap? = null, initialPageId
         get() = this.getToolType(0) == 2
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
+        if(isViewMode)
+            return true
+
         if(navigatorState == NavigatorState.MOVING) {
             when (event.action) {
                 MotionEvent.ACTION_DOWN -> {
@@ -325,7 +336,8 @@ class CanvasBoox(context: Context, var initialBmp: Bitmap? = null, initialPageId
         canvas.drawBitmap(bitmap!!, 0f, 0f, bmpPaint)
         drawPathToCanvas(canvas, path)
 
-        loupePanel?.let { it.draw(canvas, path, paintPencilOrEraser()) }
+        if (!isViewMode)
+            loupePanel?.let { it.draw(canvas, path, paintPencilOrEraser()) }
     }
 
     private var isPencil = true
