@@ -2,6 +2,7 @@ package io.github.karino2.pngnote
 
 import android.content.Intent
 import android.graphics.Bitmap
+import android.graphics.Color
 import android.net.Uri
 import android.os.Bundle
 import android.widget.Toast
@@ -77,6 +78,7 @@ class BookActivity : ComponentActivity() {
     private val isViewMode = mutableStateOf(false)
 
     private var lastWritten = -1L
+    private var emptyBmp: Bitmap? = null
 
     private var pageBmp: Bitmap? = null
     private var isDirty = false
@@ -131,7 +133,22 @@ class BookActivity : ComponentActivity() {
 
     private fun addNewPageAndGo() {
         ensureSave()
+        if (emptyBmp == null) {
+            pageBmp?.let { pbmp ->
+                emptyBmp = Bitmap.createBitmap(pbmp.width, pbmp.height, Bitmap.Config.ARGB_8888).apply {
+                    eraseColor(Color.WHITE)
+                }
+
+            }
+        }
+
         _book = book.addPage()
+
+
+        emptyBmp?.let {ebmp ->
+            val newpage = book.getPage(pageNum.value!!-1)
+            bookIO.saveBitmap(newpage, ebmp)
+        }
         pageIdx.value = pageNum.value!!-1
     }
 
