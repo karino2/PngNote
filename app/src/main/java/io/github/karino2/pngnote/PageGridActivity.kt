@@ -19,6 +19,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
@@ -54,7 +55,7 @@ class Page( private val page: DocumentFile? ) {
 
 }
 
-class PageGrid(private val bookIO: BookIO, private val pageFiles: List<DocumentFile>) {
+class PageGrid(private val bookIO: BookIO, private val pageFiles: List<DocumentFile>, val bgImage: ImageBitmap?) {
     val colNum = 4
 
     val rowNum : Int
@@ -83,9 +84,6 @@ class PageGridActivity: ComponentActivity() {
     private val bookIO by lazy { BookIO(contentResolver) }
 
     private var _book : Book? = null
-        set(newbook) {
-            field = newbook
-        }
 
     private val book : Book
         get() {
@@ -96,8 +94,10 @@ class PageGridActivity: ComponentActivity() {
             }
         }
 
+    private val bgImage by lazy { bookIO.loadBgForGrid(book.bookDir)?.asImageBitmap() }
+
     private val pageGrid by lazy {
-        PageGrid(bookIO, book.pages)
+        PageGrid(bookIO, book.pages, bgImage)
     }
     private val pageSizeDP by lazy {
         val metrics = DisplayMetrics()
@@ -176,7 +176,7 @@ fun PageGridRow(pageSize : Pair<Dp, Dp>, rowIdx :Int, pageGrid: PageGrid, thumbn
                         .padding(5.dp),
                     border = BorderStroke(2.dp, Color.Black)
                 ) {
-                    OnePage(pageSize, pageIdx, page, thumbnailState.value!!.asImageBitmap(), onOpenPage ={ onOpenPage(pageIdx) } )
+                    OnePage(pageSize, pageIdx, page, thumbnailState.value!!.asImageBitmap(), pageGrid.bgImage, onOpenPage ={ onOpenPage(pageIdx) } )
                 }
             }
         }
@@ -184,12 +184,18 @@ fun PageGridRow(pageSize : Pair<Dp, Dp>, rowIdx :Int, pageGrid: PageGrid, thumbn
 }
 
 @Composable
-fun OnePage(pageSize : Pair<Dp, Dp>, pageNum: Int, page: Page, thumbnail: ImageBitmap, onOpenPage : ()->Unit) {
+fun OnePage(pageSize : Pair<Dp, Dp>, pageNum: Int, page: Page, thumbnail: ImageBitmap, bgImage: ImageBitmap?, onOpenPage : ()->Unit) {
     Column(horizontalAlignment = Alignment.CenterHorizontally, modifier= Modifier
         .clickable(onClick = onOpenPage)) {
-        Image(modifier= Modifier
+        Canvas(modifier= Modifier
             .size(pageSize.first, pageSize.second)
-            .padding(2.dp, 2.dp), bitmap = thumbnail, contentDescription = "Page Thumbnail")
+            .padding(2.dp, 2.dp)) {
+            val blendMode = bgImage?.let { bg->
+                drawImage(bg)
+                BlendMode.Multiply
+            } ?: BlendMode.SrcOver
+            drawImage(thumbnail, blendMode = blendMode)
+        }
         Text((pageNum+1).toString(), fontSize = 20.sp)
     }
 }

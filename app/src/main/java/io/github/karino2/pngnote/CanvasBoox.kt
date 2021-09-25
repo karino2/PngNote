@@ -15,7 +15,7 @@ import kotlin.concurrent.withLock
 import kotlin.math.abs
 
 
-class CanvasBoox(context: Context, var initialBmp: Bitmap? = null, initialPageIdx:Int  = 0) : SurfaceView(context) {
+class CanvasBoox(context: Context, var initialBmp: Bitmap? = null, private val background: Bitmap?, initialPageIdx:Int  = 0) : SurfaceView(context) {
     var bitmap: Bitmap? = null
     private var bmpCanvas: Canvas? = null
 
@@ -23,6 +23,7 @@ class CanvasBoox(context: Context, var initialBmp: Bitmap? = null, initialPageId
     private val eraserWidth = 30f
 
     private val bmpPaint = Paint(Paint.DITHER_FLAG)
+    private val bmpPaintWithBG = Paint(Paint.DITHER_FLAG).apply { xfermode = PorterDuffXfermode(PorterDuff.Mode.MULTIPLY) }
     private val pathPaint = Paint().apply {
         isAntiAlias = true
         // isDither = true
@@ -419,7 +420,11 @@ class CanvasBoox(context: Context, var initialBmp: Bitmap? = null, initialPageId
         val (bmp, _) = ensureBitmap()
         holder.lockCanvas()?.let { lockCanvas ->
             lockCanvas.drawColor(Color.WHITE)
-            lockCanvas.drawBitmap(bmp, 0f, 0f, bmpPaint)
+            val paint = background?.let { bg->
+                lockCanvas.drawBitmap(bg, 0f, 0f, bmpPaint)
+                bmpPaintWithBG
+            } ?: bmpPaint
+            lockCanvas.drawBitmap(bmp, 0f, 0f, paint)
             holder.unlockCanvasAndPost(lockCanvas)
         }
     }
@@ -466,10 +471,18 @@ class CanvasBoox(context: Context, var initialBmp: Bitmap? = null, initialPageId
         val (targetBmp, bmpCanvas) = ensureBitmap()
         canvas.drawColor(Color.WHITE)
         initialBmp?.let {
+            val paint = background?.let { bg->
+                canvas.drawBitmap(bg,
+                    Rect(0, 0, bg.width, bg.height),
+                    Rect(0, 0, width, height),
+                    bmpPaint
+                )
+                bmpPaintWithBG
+            } ?: bmpPaint
             canvas.drawBitmap(it,
                 Rect(0, 0, it.width, it.height),
                 Rect(0, 0, width, height),
-                bmpPaint)
+                paint)
             BookActivity.bitmapLock.withLock {
                 bmpCanvas.drawBitmap(
                     it,
