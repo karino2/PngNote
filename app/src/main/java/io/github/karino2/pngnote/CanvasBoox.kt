@@ -208,7 +208,11 @@ class CanvasBoox(context: Context, var initialBmp: Bitmap? = null, private val b
             bitmap?.let {bmp ->
                 holder.lockCanvas()?.let { lockCanvas->
                     lockCanvas.drawColor(Color.WHITE)
-                    lockCanvas.drawBitmap(bmp, 0f, 0f, bmpPaint)
+                    val paint = background?.let { bg->
+                        lockCanvas.drawBitmap(bg, 0f, 0f, bmpPaint)
+                        bmpPaintWithBG
+                    } ?: bmpPaint
+                    lockCanvas.drawBitmap(bmp, 0f, 0f, paint)
                     holder.unlockCanvasAndPost(lockCanvas)
                 }
                 true
