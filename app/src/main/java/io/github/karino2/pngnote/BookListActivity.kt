@@ -30,6 +30,7 @@ import androidx.compose.ui.graphics.Paint
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.documentfile.provider.DocumentFile
@@ -269,10 +270,11 @@ fun Book(bookDir: DocumentFile, bookSize : Pair<Dp, Dp>, thumbnail: Thumbnail, o
             .size(bookSize.first, bookSize.second)
             .padding(5.dp, 10.dp)) {
             val blendMode = thumbnail.bg?.let { bg->
-                drawImage(bg.asImageBitmap())
+
+                drawImage(bg.asImageBitmap(), dstSize = IntSize(size.width.toInt(), size.height.toInt()))
                 BlendMode.Multiply
             } ?: BlendMode.SrcOver
-            drawImage(thumbnail.page.asImageBitmap(), blendMode=blendMode)
+            drawImage(thumbnail.page.asImageBitmap(), dstSize = IntSize(size.width.toInt(), size.height.toInt()), blendMode=blendMode)
         }
         Text(bookDir.name!!, fontSize = 20.sp)
     }
