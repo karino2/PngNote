@@ -26,7 +26,6 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.documentfile.provider.DocumentFile
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.lifecycleScope
 import io.github.karino2.pngnote.ui.theme.PngNoteTheme
@@ -35,7 +34,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 
-class Page( private val page: DocumentFile? ) {
+class Page( private val page: FastFile? ) {
     companion object {
         val blankBitmap: Bitmap = Bitmap.createBitmap(100, 100, Bitmap.Config.ARGB_8888).apply { eraseColor(
             android.graphics.Color.LTGRAY) }
@@ -55,7 +54,7 @@ class Page( private val page: DocumentFile? ) {
 
 }
 
-class PageGrid(private val bookIO: BookIO, private val pageFiles: List<DocumentFile>, val bgImage: ImageBitmap?) {
+class PageGrid(private val bookIO: BookIO, private val pageFiles: List<FastFile>, val bgImage: ImageBitmap?) {
     val colNum = 4
 
     val rowNum : Int
@@ -78,7 +77,7 @@ class PageGrid(private val bookIO: BookIO, private val pageFiles: List<DocumentF
 class PageGridActivity: ComponentActivity() {
     private lateinit var dirUrl : Uri
     private val bookDir by lazy {
-        DocumentFile.fromTreeUri(this, dirUrl) ?: throw Exception("Cant open dir.")
+        FastFile.fromTreeUri(this, dirUrl) ?: throw Exception("Cant open dir.")
     }
 
     private val bookIO by lazy { BookIO(contentResolver) }
