@@ -22,23 +22,18 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Color.Companion.Black
-import androidx.compose.ui.graphics.Paint
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.documentfile.provider.DocumentFile
 import androidx.lifecycle.*
 import io.github.karino2.pngnote.ui.theme.PngNoteTheme
 import io.github.karino2.pngnote.ui.theme.booxTextButtonColors
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 data class Thumbnail(val page: Bitmap, val bg: Bitmap?)
@@ -69,7 +64,7 @@ class BookListActivity : ComponentActivity() {
         reloadBookList(url)
     }
 
-    private val files = MutableLiveData(emptyList<DocumentFile>())
+    private val files = MutableLiveData(emptyList<FastFile>())
     private val thumbnails =  Transformations.switchMap(files) { flist ->
         liveData {
             emit(flist.map { Thumbnail(blankBitmap, null) })
@@ -92,12 +87,15 @@ class BookListActivity : ComponentActivity() {
         }
     }
 
-    private fun listFiles(url: Uri): List<DocumentFile> {
-        val rootDir = DocumentFile.fromTreeUri(this, url) ?: throw Exception("Can't open dir")
+    private fun listFiles(url: Uri): List<FastFile> {
+        val rootDir = FastFile.fromTreeUri(this, url)
+
         if (!rootDir.isDirectory)
             throw Exception("Not directory")
+
         return rootDir.listFiles()
             .filter { it.isDirectory }
+            .toList()
             .sortedByDescending { it.name }
     }
 
@@ -165,7 +163,7 @@ class BookListActivity : ComponentActivity() {
     }
 
     private fun addNewBook(newBookName: String) {
-        val rootDir = _url?.let { DocumentFile.fromTreeUri(this, it) } ?: throw Exception("Can't open dir")
+        val rootDir = _url?.let { FastFile.fromTreeUri(this, it) } ?: throw Exception("Can't open dir")
         try {
             rootDir.createDirectory(newBookName)
             openRootDir(_url!!)
@@ -226,7 +224,7 @@ val blankBitmap: Bitmap = Bitmap.createBitmap(100, 100, Bitmap.Config.ARGB_8888)
 
 
 @Composable
-fun BookList(bookDirs: LiveData<List<DocumentFile>>, thumbnails: LiveData<List<Thumbnail>>, bookSize : Pair<Dp, Dp>,  gotoBook : (dir: DocumentFile)->Unit) {
+fun BookList(bookDirs: LiveData<List<FastFile>>, thumbnails: LiveData<List<Thumbnail>>, bookSize : Pair<Dp, Dp>,  gotoBook : (dir: FastFile)->Unit) {
     val bookListState = bookDirs.observeAsState(emptyList())
     val thumbnailListState = thumbnails.observeAsState(emptyList())
 
@@ -241,7 +239,7 @@ fun BookList(bookDirs: LiveData<List<DocumentFile>>, thumbnails: LiveData<List<T
 }
 
 @Composable
-fun TwoBook(books: List<DocumentFile>, thumbnails: List<Thumbnail>, leftIdx: Int, bookSize : Pair<Dp, Dp>, gotoBook : (dir: DocumentFile)->Unit) {
+fun TwoBook(books: List<FastFile>, thumbnails: List<Thumbnail>, leftIdx: Int, bookSize : Pair<Dp, Dp>, gotoBook : (dir: FastFile)->Unit) {
     Row {
         Card(modifier= Modifier
             .weight(1f)
@@ -263,7 +261,7 @@ fun TwoBook(books: List<DocumentFile>, thumbnails: List<Thumbnail>, leftIdx: Int
 }
 
 @Composable
-fun Book(bookDir: DocumentFile, bookSize : Pair<Dp, Dp>, thumbnail: Thumbnail, onOpenBook : ()->Unit) {
+fun Book(bookDir: FastFile, bookSize : Pair<Dp, Dp>, thumbnail: Thumbnail, onOpenBook : ()->Unit) {
     Column(horizontalAlignment = Alignment.CenterHorizontally, modifier= Modifier
         .clickable(onClick = onOpenBook)) {
         Canvas(modifier= Modifier
@@ -276,6 +274,6 @@ fun Book(bookDir: DocumentFile, bookSize : Pair<Dp, Dp>, thumbnail: Thumbnail, o
             } ?: BlendMode.SrcOver
             drawImage(thumbnail.page.asImageBitmap(), dstSize = IntSize(size.width.toInt(), size.height.toInt()), blendMode=blendMode)
         }
-        Text(bookDir.name!!, fontSize = 20.sp)
+        Text(bookDir.name, fontSize = 20.sp)
     }
 }

@@ -26,7 +26,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
-import androidx.documentfile.provider.DocumentFile
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.lifecycleScope
 import io.github.karino2.pngnote.ui.theme.PngNoteTheme
@@ -44,7 +43,7 @@ class BookActivity : ComponentActivity() {
     private var initialPageIdx = 0
 
     private val bookDir by lazy {
-        DocumentFile.fromTreeUri(this, dirUrl) ?: throw Exception("Cant open dir.")
+        FastFile.fromTreeUri(this, dirUrl)
     }
 
     private val bookIO by lazy { BookIO(contentResolver) }
