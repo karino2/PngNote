@@ -32,6 +32,7 @@ import io.github.karino2.pngnote.ui.theme.PngNoteTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.util.*
 import kotlin.concurrent.withLock
 
@@ -96,7 +97,15 @@ class BookActivity : ComponentActivity() {
 
     private fun getCurrentMills() = (Date()).time
 
-    private fun savePage(pageIdx: Int, pageBmp: Bitmap) {
+    private suspend fun savePage(pageIdx: Int, pageBmp: Bitmap) {
+        bookIO.saveBitmap(book.getPage(pageIdx), pageBmp)
+        withContext(Dispatchers.Main) {
+            _book = book.assignNonEmpty(pageIdx)
+        }
+    }
+
+    // same as savePage, but blocking in Main thread.
+    private fun savePageInMain(pageIdx: Int, pageBmp: Bitmap) {
         bookIO.saveBitmap(book.getPage(pageIdx), pageBmp)
         _book = book.assignNonEmpty(pageIdx)
     }
@@ -120,7 +129,7 @@ class BookActivity : ComponentActivity() {
     private fun ensureSave() {
         if (isDirty) {
             isDirty = false
-            savePage(pageIdx.value!!, pageBmp!!)
+            savePageInMain(pageIdx.value!!, pageBmp!!)
         }
     }
 
@@ -146,7 +155,7 @@ class BookActivity : ComponentActivity() {
 
 
         emptyBmp?.let {ebmp ->
-            savePage(pageNum.value!!-1, ebmp)
+            savePageInMain(pageNum.value!! - 1, ebmp)
         }
         pageIdx.value = pageNum.value!!-1
     }
