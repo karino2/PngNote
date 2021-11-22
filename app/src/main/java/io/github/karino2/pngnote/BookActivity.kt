@@ -103,6 +103,10 @@ class BookActivity : ComponentActivity() {
 
     private fun getCurrentMills() = (Date()).time
 
+    private fun savePage(pageIdx: Int, pageBmp: Bitmap) {
+        bookIO.saveBitmap(book.getPage(pageIdx), pageBmp)
+        _book = book.assignNonEmpty(pageIdx)
+    }
 
     private val SAVE_INTERVAL_MILL = 5000L
     private fun lazySave() {
@@ -114,8 +118,7 @@ class BookActivity : ComponentActivity() {
                     val bmp = pageBmp!!
                     bmp.copy(bmp.config, false)
                 }
-
-                bookIO.saveBitmap(book.getPage(pageIdx.value!!), tmpBmp)
+                savePage(pageIdx.value!!, tmpBmp)
             }
         }
     }
@@ -124,7 +127,7 @@ class BookActivity : ComponentActivity() {
     private fun ensureSave() {
         if (isDirty) {
             isDirty = false
-            bookIO.saveBitmap(book.getPage(pageIdx.value!!), pageBmp!!)
+            savePage(pageIdx.value!!, pageBmp!!)
         }
     }
 
@@ -155,8 +158,7 @@ class BookActivity : ComponentActivity() {
 
 
         emptyBmp?.let {ebmp ->
-            val newpage = book.getPage(pageNum.value!!-1)
-            bookIO.saveBitmap(newpage, ebmp)
+            savePage(pageNum.value!!-1, ebmp)
         }
         pageIdx.value = pageNum.value!!-1
     }
