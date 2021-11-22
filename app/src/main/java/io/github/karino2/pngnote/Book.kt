@@ -131,6 +131,14 @@ data class FastFile(val uri: Uri, val name: String, val lastModified: Long, val 
         val resUri = DocumentsContract.createDocument(resolver, uri, DocumentsContract.Document.MIME_TYPE_DIR, displayName) ?: return null
         return fromDocUri(resolver, resUri)
     }
+
+    val isEmpty : Boolean
+        get(){
+            if (!isFile)
+                return false
+            return 0L == size
+        }
+
 }
 
 
@@ -163,6 +171,21 @@ class Book(val bookDir: FastFile, val pages: List<FastFile>, val bgImage: FastFi
     }
 
     fun getPage(idx: Int) = BookPage(pages[idx], idx)
+
+    // Assign dummy size so that file.isEmpty becomes false.
+    // We doesn't care actual size, just check whether it's empty or not.
+    // So assign non-zero value is enough for our purpose.
+    fun assignNonEmpty(pageIdx: Int): Book {
+        if(!getPage(pageIdx).file.isEmpty)
+            return this
+
+        return  pages.mapIndexed { idx, file ->
+            if(idx != pageIdx)
+                file
+            else
+                file.copy(size=1000)
+        }.toList().let { Book(bookDir, it, bgImage) }
+    }
 
     val name : String
         get() = bookDir.name
@@ -215,11 +238,7 @@ class BookIO(private val resolver: ContentResolver) {
         }
     }
 
-    private fun isEmpty(file: FastFile) : Boolean {
-        if (!file.isFile)
-            return false
-        return 0L == file.size
-    }
+    private fun isEmpty(file: FastFile) = file.isEmpty
 
     fun isPageEmpty(page: BookPage) = isEmpty(page.file)
     fun loadBitmap(page: BookPage) = loadBitmap(page.file)
