@@ -100,13 +100,36 @@ class BookListActivity : ComponentActivity() {
     }
 
     private val bookSizeDP by lazy {
-        val metrics = DisplayMetrics()
-        windowManager.defaultDisplay.getMetrics(metrics)
+
+        var pixelHeight
+        var pixelWidth
+        var density
+
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
+            val metrics = windowManager.maximumWindowMetrics
+
+            density = resources.displayMetrics.density
+            pixelHeight = metrics.bounds.height()
+            pixelWidth = metrics.bounds.width()
+
+        } else {
+            val metrics = DisplayMetrics()
+            @Suppress("DEPRECATION")
+            val display = windowManager.defaultDisplay
+            @Suppress("DEPRECATION")
+            display.getMetrics(metrics)
+
+            density = metrics.density
+            pixelHeight = metrics.heightPixels
+            pixelWidth = metrics.widthPixels
+        }
 
         // about half of 80%〜90%.
 
-        val height = (metrics.heightPixels*0.40/metrics.density).dp
-        val width = (metrics.widthPixels*0.45/metrics.density).dp
+        println("Pixelheight applied ${pixelHeight.toString()}")
+
+        val height = ((pixelHeight/density)*0.35).dp
+        val width = (pixelWidth*0.45/density).dp
 
         Pair(width, height)
     }
