@@ -26,6 +26,7 @@ import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
@@ -245,14 +246,14 @@ fun TwoBook(books: List<FastFile>, thumbnails: List<Thumbnail>, leftIdx: Int, bo
             .weight(1f)
             .padding(5.dp), border= BorderStroke(2.dp, Color.Black)) {
             val book =books[leftIdx]
-            Book(book, bookSize, thumbnails[leftIdx], onOpenBook = { gotoBook(book) })
+            Book(book.name, bookSize, thumbnails[leftIdx], onOpenBook = { gotoBook(book) })
         }
         if (leftIdx+1 < books.size) {
             Card(modifier= Modifier
                 .weight(1f)
                 .padding(5.dp), border= BorderStroke(2.dp, Color.Black)) {
                 val book =books[leftIdx+1]
-                Book(book, bookSize, thumbnails[leftIdx+1], onOpenBook = { gotoBook(book) })
+                Book(book.name, bookSize, thumbnails[leftIdx+1], onOpenBook = { gotoBook(book) })
             }
         } else {
             Card(modifier=Modifier.weight(1f)) {}
@@ -261,7 +262,7 @@ fun TwoBook(books: List<FastFile>, thumbnails: List<Thumbnail>, leftIdx: Int, bo
 }
 
 @Composable
-fun Book(bookDir: FastFile, bookSize : Pair<Dp, Dp>, thumbnail: Thumbnail, onOpenBook : ()->Unit) {
+fun Book(bookName: String, bookSize : Pair<Dp, Dp>, thumbnail: Thumbnail, onOpenBook : ()->Unit) {
     Column(horizontalAlignment = Alignment.CenterHorizontally, modifier= Modifier
         .clickable(onClick = onOpenBook)) {
         Canvas(modifier= Modifier
@@ -274,6 +275,6 @@ fun Book(bookDir: FastFile, bookSize : Pair<Dp, Dp>, thumbnail: Thumbnail, onOpe
             } ?: BlendMode.SrcOver
             drawImage(thumbnail.page.asImageBitmap(), dstSize = IntSize(size.width.toInt(), size.height.toInt()), blendMode=blendMode)
         }
-        Text(bookDir.name, fontSize = 20.sp)
+        Text(bookName, fontSize = 20.sp)
     }
 }
