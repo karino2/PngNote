@@ -16,10 +16,6 @@ object PrefManager {
         get() = preferences.getString("last_root_url", null)
         set(value) {preferences.edit().putString("last_root_url", value).apply()}
 
-    fun setUri(value: Uri) {uri = value.toString()}
-    fun getUri():Uri? {
-        if (uri==null)
-            {return null}
-        else
-            {return Uri.parse(uri)}}
+    fun setUri(value: Uri) { uri = value.toString() }
+    fun getUri() = uri?.let { Uri.parse(it) }
 }
