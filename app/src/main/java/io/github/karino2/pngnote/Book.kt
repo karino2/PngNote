@@ -145,18 +145,6 @@ data class FastFile(val uri: Uri, val name: String, val lastModified: Long, val 
 
 class BookList(val dir: FastFile, val resolver: ContentResolver) {
     companion object {
-        private const val LAST_ROOT_DIR_KEY = "last_root_url"
-
-        fun lastUriStr(ctx: Context) = sharedPreferences(ctx).getString(LAST_ROOT_DIR_KEY, null)
-        fun writeLastUriStr(ctx: Context, path : String) = sharedPreferences(ctx).edit()
-            .putString(LAST_ROOT_DIR_KEY, path)
-            .commit()
-
-        fun resetLastUriStr(ctx: Context) = sharedPreferences(ctx).edit()
-            .putString(LAST_ROOT_DIR_KEY, null)
-            .commit()
-
-        private fun sharedPreferences(ctx: Context) = ctx.getSharedPreferences("KAKIOKU", Context.MODE_PRIVATE)
 
         fun showMessage(ctx: Context, msg : String) = Toast.makeText(ctx, msg, Toast.LENGTH_SHORT).show()
     }
