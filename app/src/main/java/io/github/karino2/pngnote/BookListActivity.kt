@@ -32,6 +32,7 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.*
+import io.github.karino2.pngnote.data.preferences.PrefManager
 import io.github.karino2.pngnote.ui.theme.PngNoteTheme
 import io.github.karino2.pngnote.ui.theme.booxTextButtonColors
 import kotlinx.coroutines.Dispatchers
@@ -54,9 +55,9 @@ class BookListActivity : ComponentActivity() {
     }
 
     private val lastUri: Uri?
-        get() = BookList.lastUriStr(this)?.let { Uri.parse(it) }
+        get() = PrefManager.getUri()
 
-    private fun writeLastUri(uri: Uri) = BookList.writeLastUriStr(this, uri.toString())
+    private fun writeLastUri(uri: Uri) = PrefManager.setUri(uri)
 
     private fun showMessage(msg: String) = BookList.showMessage(this, msg)
 
@@ -125,6 +126,7 @@ class BookListActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        PrefManager.init(applicationContext)
         setContent {
             PngNoteTheme {
                 Column {
