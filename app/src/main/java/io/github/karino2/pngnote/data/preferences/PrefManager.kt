@@ -12,7 +12,8 @@ object PrefManager {
 
     fun init(context: Context) { preferences = context.getSharedPreferences(NAME, MODE)}
 
-    private var uri : String? = preferences.getString("last_root_url", null)
+    private var uri : String?
+        get() = preferences.getString("last_root_url", null)
         set(value) {preferences.edit().putString("last_root_url", value).apply()}
 
     fun setUri(value: Uri) {uri = value.toString()}
