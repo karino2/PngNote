@@ -12,7 +12,7 @@ android {
 
     defaultConfig {
         applicationId "io.github.karino2.pngnote"
-        minSdkVersion 24
+        minSdkVersion 29
         targetSdkVersion 31
         versionCode 4
         versionName "0.4"
