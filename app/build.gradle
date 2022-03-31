@@ -1,6 +1,9 @@
 plugins {
     id 'com.android.application'
     id 'kotlin-android'
+    id 'kotlin-kapt'
+    id 'dagger.hilt.android.plugin'
+
 }
 
 android {
@@ -61,6 +64,10 @@ dependencies {
     // used in RawInputManager.
     implementation group: 'io.reactivex.rxjava2', name: 'rxjava', version: '2.2.21'
     implementation group: 'io.reactivex.rxjava2', name: 'rxandroid', version: '2.1.1'
+
+    // Hilt
+    implementation("com.google.dagger:hilt-android:$hilt_version")
+    kapt("com.google.dagger:hilt-android-compiler:$hilt_version")
 
     implementation "androidx.compose.ui:ui:$compose_version"
     implementation "androidx.compose.material:material:$compose_version"
