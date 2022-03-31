@@ -3,14 +3,16 @@ package io.github.karino2.pngnote.data.preferences
 import android.content.Context
 import android.content.SharedPreferences
 import android.net.Uri
+import androidx.preference.PreferenceManager.getDefaultSharedPreferences
 
-object PrefManager {
+import dagger.hilt.android.qualifiers.ApplicationContext
+import javax.inject.Inject
+import javax.inject.Singleton
 
-    private const val NAME = "KAKIOKU"
-    private const val MODE = Context.MODE_PRIVATE
-    private lateinit var preferences: SharedPreferences
+@Singleton
+class PrefManager @Inject constructor(@ApplicationContext context : Context){
 
-    fun init(context: Context) { preferences = context.getSharedPreferences(NAME, MODE)}
+    val preferences: SharedPreferences = getDefaultSharedPreferences(context)
 
     private var uri : String?
         get() = preferences.getString("last_root_url", null)
@@ -18,4 +20,9 @@ object PrefManager {
 
     fun setUri(value: Uri) { uri = value.toString() }
     fun getUri() = uri?.let { Uri.parse(it) }
+
+    companion object {
+        private const val NAME = "KAKIOKU"
+        private const val MODE = Context.MODE_PRIVATE
+    }
 }

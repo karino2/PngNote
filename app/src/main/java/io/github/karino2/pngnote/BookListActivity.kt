@@ -32,16 +32,22 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.*
+import dagger.hilt.android.AndroidEntryPoint
 import io.github.karino2.pngnote.data.preferences.PrefManager
 import io.github.karino2.pngnote.ui.theme.PngNoteTheme
 import io.github.karino2.pngnote.ui.theme.booxTextButtonColors
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import javax.inject.Inject
 
 data class Thumbnail(val page: Bitmap, val bg: Bitmap?)
 
-
-class BookListActivity : ComponentActivity() {
+@AndroidEntryPoint
+class BookListActivity @Inject constructor (
+    // This should move to the viewmodel and become a viewmodel inject there
+    val prefManager : PrefManager
+): ComponentActivity()
+{
     private var _url : Uri? = null
 
     private val getRootDirUrl = registerForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
@@ -55,9 +61,9 @@ class BookListActivity : ComponentActivity() {
     }
 
     private val lastUri: Uri?
-        get() = PrefManager.getUri()
+        get() = prefManager.getUri()
 
-    private fun writeLastUri(uri: Uri) = PrefManager.setUri(uri)
+    private fun writeLastUri(uri: Uri) = prefManager.setUri(uri)
 
     private fun showMessage(msg: String) = BookList.showMessage(this, msg)
 
@@ -126,7 +132,6 @@ class BookListActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        PrefManager.init(applicationContext)
         setContent {
             PngNoteTheme {
                 Column {
