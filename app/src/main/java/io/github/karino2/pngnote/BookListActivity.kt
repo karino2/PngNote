@@ -43,11 +43,11 @@ import javax.inject.Inject
 data class Thumbnail(val page: Bitmap, val bg: Bitmap?)
 
 @AndroidEntryPoint
-class BookListActivity @Inject constructor (
-    // This should move to the viewmodel and become a viewmodel inject there
-    val prefManager : PrefManager
-): ComponentActivity()
+class BookListActivity (): ComponentActivity()
 {
+    @Inject
+    lateinit var prefManager: PrefManager
+
     private var _url : Uri? = null
 
     private val getRootDirUrl = registerForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
