@@ -1,4 +1,4 @@
-package io.github.karino2.pngnote
+package io.github.karino2.pngnote.ui
 
 import android.content.Context
 import android.graphics.*
@@ -10,6 +10,7 @@ import com.onyx.android.sdk.pen.RawInputCallback
 import com.onyx.android.sdk.pen.TouchHelper
 import com.onyx.android.sdk.pen.data.TouchPoint
 import com.onyx.android.sdk.pen.data.TouchPointList
+import io.github.karino2.pngnote.BookActivity
 import java.util.*
 import kotlin.concurrent.withLock
 import kotlin.math.abs
