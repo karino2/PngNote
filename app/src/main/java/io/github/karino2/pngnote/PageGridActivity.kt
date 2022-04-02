@@ -11,6 +11,7 @@ import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.lifecycleScope
 import io.github.karino2.pngnote.ui.Page
@@ -23,6 +24,17 @@ import kotlinx.coroutines.withContext
 
 
 class PageGridActivity: ComponentActivity() {
+    companion object {
+        fun displayMetricsTo4GridSize(metrics: DisplayMetrics) : Pair<Dp, Dp> {
+            // about 1/4 of 80%〜90%.
+
+            val height = (metrics.heightPixels*0.20/metrics.density).dp
+            val width = (metrics.widthPixels*0.225/metrics.density).dp
+
+            return Pair(width, height)
+        }
+    }
+
     private lateinit var dirUrl : Uri
     private val bookDir by lazy {
         FastFile.fromTreeUri(this, dirUrl)
@@ -56,12 +68,7 @@ class PageGridActivity: ComponentActivity() {
         val metrics = DisplayMetrics()
         windowManager.defaultDisplay.getMetrics(metrics)
 
-        // about 1/4 of 80%〜90%.
-
-        val height = (metrics.heightPixels*0.20/metrics.density).dp
-        val width = (metrics.widthPixels*0.225/metrics.density).dp
-
-        Pair(width, height)
+        displayMetricsTo4GridSize(metrics)
     }
 
     private fun requestLoadPages() {
