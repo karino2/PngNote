@@ -11,7 +11,6 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.*
-import androidx.compose.material.ButtonDefaults.textButtonColors
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Settings
@@ -26,13 +25,11 @@ import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.*
-import io.github.karino2.pngnote.data.preferences.PrefManager
 import io.github.karino2.pngnote.ui.theme.PngNoteTheme
 import io.github.karino2.pngnote.ui.theme.booxTextButtonColors
 import kotlinx.coroutines.Dispatchers
@@ -55,9 +52,9 @@ class BookListActivity : ComponentActivity() {
     }
 
     private val lastUri: Uri?
-        get() = PrefManager.getUri()
+        get() = BookList.lastUriStr(this)?.let { Uri.parse(it) }
 
-    private fun writeLastUri(uri: Uri) = PrefManager.setUri(uri)
+    private fun writeLastUri(uri: Uri) = BookList.writeLastUriStr(this, uri.toString())
 
     private fun showMessage(msg: String) = BookList.showMessage(this, msg)
 
@@ -126,7 +123,6 @@ class BookListActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        PrefManager.init(applicationContext)
         setContent {
             PngNoteTheme {
                 Column {
