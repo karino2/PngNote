@@ -77,7 +77,7 @@ class PageGrid(private val bookIO: BookIO, private val pageFiles: List<FastFile>
 class PageGridActivity: ComponentActivity() {
     private lateinit var dirUrl : Uri
     private val bookDir by lazy {
-        FastFile.fromTreeUri(this, dirUrl) ?: throw Exception("Cant open dir.")
+        FastFile.fromTreeUri(this, dirUrl)
     }
 
     private val bookIO by lazy { BookIO(contentResolver) }
