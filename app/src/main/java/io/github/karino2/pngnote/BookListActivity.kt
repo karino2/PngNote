@@ -31,9 +31,13 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.*
+import io.github.karino2.pngnote.ui.Page
+import io.github.karino2.pngnote.ui.PageGrid
+import io.github.karino2.pngnote.ui.PageGridData
 import io.github.karino2.pngnote.ui.theme.PngNoteTheme
 import io.github.karino2.pngnote.ui.theme.booxTextButtonColors
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 data class Thumbnail(val page: Bitmap, val bg: Bitmap?)
@@ -64,18 +68,33 @@ class BookListActivity : ComponentActivity() {
         reloadBookList(url)
     }
 
-    private val files = MutableLiveData(emptyList<FastFile>())
-    private val thumbnails =  files.switchMap { flist ->
-        liveData {
-            emit(flist.map { Thumbnail(blankBitmap, null) })
-            withContext(lifecycleScope.coroutineContext + Dispatchers.IO) {
-                val thumbs = flist.map {
-                    val page = bookIO.loadThumbnail(it) ?: blankBitmap
-                    val bg = bookIO.loadBgThumbnail(it)
-                    Thumbnail(page, bg)
-                }
+    val blankBitmap: Bitmap = Bitmap.createBitmap(100, 100, Bitmap.Config.ARGB_8888).apply { eraseColor(
+        android.graphics.Color.LTGRAY) }
+
+    private var files = emptyList<FastFile>()
+
+    private val pageList = mutableStateOf(emptyList<Page>())
+    private fun updateFiles( newFiles: List<FastFile> )
+    {
+        files = newFiles
+        pageList.value = newFiles.map { file ->
+            Page(
+                file.name,
+                blankBitmap,
+                blankBitmap
+            )
+        }
+        requestLoadPages()
+    }
+
+    private fun requestLoadPages() {
+        lifecycleScope.launch(Dispatchers.IO) {
+            files.forEachIndexed { idx, onebookdir ->
+                val thumbnail = bookIO.loadThumbnail(onebookdir) ?: blankBitmap
+                val bg = bookIO.loadBgThumbnail(onebookdir)
+
                 withContext(Dispatchers.Main) {
-                    emit(thumbs)
+                    pageList.value = pageList.value.mapIndexed {idx2, page -> if(idx==idx2) page.copy(thumbnail = thumbnail, bgThumbnail = bg) else page }
                 }
             }
         }
@@ -83,7 +102,7 @@ class BookListActivity : ComponentActivity() {
 
     private fun reloadBookList(url: Uri) {
         listFiles(url).also { flist->
-            files.value = flist
+            updateFiles(flist)
         }
     }
 
@@ -103,12 +122,7 @@ class BookListActivity : ComponentActivity() {
         val metrics = DisplayMetrics()
         windowManager.defaultDisplay.getMetrics(metrics)
 
-        // about half of 80%〜90%.
-
-        val height = (metrics.heightPixels*0.40/metrics.density).dp
-        val width = (metrics.widthPixels*0.45/metrics.density).dp
-
-        Pair(width, height)
+        PageGridActivity.displayMetricsTo4GridSize(metrics)
     }
 
     private val bookIO by lazy { BookIO(contentResolver) }
@@ -117,7 +131,7 @@ class BookListActivity : ComponentActivity() {
         super.onRestart()
 
         // return from other activity, etc.
-        if(true == files.value?.isNotEmpty()) {
+        if(files.isNotEmpty()) {
             reloadBookList(_url!!)
         }
     }
@@ -141,10 +155,10 @@ class BookListActivity : ComponentActivity() {
                     if (showDialog.value) {
                         NewBookPopup(onNewBook = { addNewBook(it) }, onDismiss= { showDialog.value = false })
                     }
-                    BookList(files, thumbnails, bookSizeDP,
-                        gotoBook = { bookDir ->
+                    PageGrid(pageList.value, bookSizeDP, onOpenPage = { pageIdx ->
+
                         Intent(this@BookListActivity, BookActivity::class.java).also {
-                            it.data = bookDir.uri
+                            it.data = files[pageIdx].uri
                             startActivity(it)
                         }
                     })
@@ -219,57 +233,3 @@ fun NewBookPopup(onNewBook : (bookName: String)->Unit, onDismiss: ()->Unit) {
     )
 }
 
-val blankBitmap: Bitmap = Bitmap.createBitmap(100, 100, Bitmap.Config.ARGB_8888).apply { eraseColor(
-    android.graphics.Color.LTGRAY) }
-
-
-@Composable
-fun BookList(bookDirs: LiveData<List<FastFile>>, thumbnails: LiveData<List<Thumbnail>>, bookSize : Pair<Dp, Dp>,  gotoBook : (dir: FastFile)->Unit) {
-    val bookListState = bookDirs.observeAsState(emptyList())
-    val thumbnailListState = thumbnails.observeAsState(emptyList())
-
-    Column(modifier= Modifier
-        .padding(10.dp)
-        .verticalScroll(rememberScrollState())) {
-        val rowNum = (bookListState.value.size+1)/2
-        0.until(rowNum).forEach { rowIdx ->
-            TwoBook(bookListState.value, thumbnailListState.value,rowIdx*2, bookSize, gotoBook)
-        }
-    }
-}
-
-@Composable
-fun TwoBook(books: List<FastFile>, thumbnails: List<Thumbnail>, leftIdx: Int, bookSize : Pair<Dp, Dp>, gotoBook : (dir: FastFile)->Unit) {
-    Row {
-        Card(modifier=Modifier.weight(1f).padding(5.dp), border= BorderStroke(2.dp, Color.Black)) {
-            val book =books[leftIdx]
-            Book(book, bookSize, thumbnails[leftIdx], onOpenBook = { gotoBook(book) })
-        }
-        if (leftIdx+1 < books.size) {
-            Card(modifier=Modifier.weight(1f).padding(5.dp), border= BorderStroke(2.dp, Color.Black)) {
-                val book =books[leftIdx+1]
-                Book(book, bookSize, thumbnails[leftIdx+1], onOpenBook = { gotoBook(book) })
-            }
-        } else {
-            Card(modifier=Modifier.weight(1f)) {}
-        }
-    }
-}
-
-@Composable
-fun Book(bookDir: FastFile, bookSize : Pair<Dp, Dp>, thumbnail: Thumbnail, onOpenBook : ()->Unit) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier= Modifier
-        .clickable(onClick = onOpenBook)) {
-        Canvas(modifier= Modifier
-            .size(bookSize.first, bookSize.second)
-            .padding(5.dp, 10.dp)) {
-            val blendMode = thumbnail.bg?.let { bg->
-
-                drawImage(bg.asImageBitmap(), dstSize = IntSize(size.width.toInt(), size.height.toInt()))
-                BlendMode.Multiply
-            } ?: BlendMode.SrcOver
-            drawImage(thumbnail.page.asImageBitmap(), dstSize = IntSize(size.width.toInt(), size.height.toInt()), blendMode=blendMode)
-        }
-        Text(bookDir.name, fontSize = 20.sp)
-    }
-}
