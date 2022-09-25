@@ -6,9 +6,9 @@ import android.view.SurfaceHolder
 import android.view.SurfaceView
 import android.view.View.OnLayoutChangeListener
 import com.onyx.android.sdk.api.device.epd.EpdController
+import com.onyx.android.sdk.data.note.TouchPoint
 import com.onyx.android.sdk.pen.RawInputCallback
 import com.onyx.android.sdk.pen.TouchHelper
-import com.onyx.android.sdk.pen.data.TouchPoint
 import com.onyx.android.sdk.pen.data.TouchPointList
 import io.github.karino2.pngnote.BookActivity
 import java.util.*
