@@ -1,13 +1,17 @@
 package io.github.karino2.pngnote
 
+import android.R.attr.bitmap
 import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.Color
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
+import android.provider.MediaStore
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.annotation.RequiresApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.*
@@ -15,17 +19,20 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.outlined.Edit
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.core.content.FileProvider
+import androidx.core.net.toUri
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.lifecycleScope
 import io.github.karino2.pngnote.ui.CanvasBoox
@@ -34,8 +41,11 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.io.File
 import java.util.*
 import kotlin.concurrent.withLock
+import kotlin.io.path.outputStream
+
 
 class BookActivity : ComponentActivity() {
     companion object {
@@ -140,7 +150,33 @@ class BookActivity : ComponentActivity() {
     }
 
 
+    @RequiresApi(Build.VERSION_CODES.O)
+    private fun share() {
+        ensureSave()
+        if (pageBmp == null) {
+            return
+        }
+        val path = File.createTempFile("share", ".png", cacheDir)
+        path.outputStream().use {
+            pageBmp!!.compress(Bitmap.CompressFormat.PNG, 100, it)
+            it.flush()
+        }
+        val u = FileProvider.getUriForFile(this, applicationContext.packageName+".provider", path)
+        shareImageUri(u)
+    }
 
+
+    /**
+     * Shares the PNG image from Uri.
+     * @param uri Uri of image to share.
+     */
+    private fun shareImageUri(uri: Uri) {
+        val intent = Intent(Intent.ACTION_SEND)
+        intent.putExtra(Intent.EXTRA_STREAM, uri)
+        intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        intent.type = "image/png"
+        startActivity(intent)
+    }
     private fun addNewPageAndGo() {
         ensureSave()
         if (emptyBmp == null) {
@@ -278,6 +314,9 @@ class BookActivity : ComponentActivity() {
 
                                 IconButton(onClick={ addNewPageAndGo() }, enabled = lastPage) {
                                     Icon(imageVector = Icons.Default.Add, contentDescription = "Add Page")
+                                }
+                                IconButton(onClick={ share() }, enabled = true) {
+                                    Icon(imageVector = Icons.Default.Share, contentDescription = "Share")
                                 }
                             }
                         },
