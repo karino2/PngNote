@@ -7,6 +7,7 @@ import android.graphics.Color
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.os.Handler
 import android.provider.MediaStore
 import android.widget.Toast
 import androidx.activity.ComponentActivity
@@ -150,10 +151,16 @@ class BookActivity : ComponentActivity() {
             savePageInMain(pageIdx.value!!, pageBmp!!)
         }
     }
+    
+    private val handler = Handler()
 
     override fun onRestart() {
         super.onRestart()
-        restartCount.value = restartCount.value!!+1
+
+        // Some time, it seems this call happens too early (before surface is available)
+        // especially when back from "Share".
+        // It had better handle those case in CanvasBoox properly, but just add delay here for a workaround.
+        handler.postDelayed( {restartCount.value = restartCount.value!!+1}, 300)
     }
 
     override fun onStop() {
