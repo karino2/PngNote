@@ -162,7 +162,6 @@ class BookActivity : ComponentActivity() {
     }
 
 
-    @RequiresApi(Build.VERSION_CODES.O)
     private fun share() {
         ensureSave()
         if (pageBmp == null) {

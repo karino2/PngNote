@@ -4,13 +4,13 @@ plugins {
 }
 
 android {
-    compileSdk 31
+    compileSdk 33
     buildToolsVersion "30.0.3"
 
     defaultConfig {
         applicationId "io.github.karino2.pngnote"
-        minSdk 24
-        targetSdk 31
+        minSdk 26
+        targetSdk 33
         versionCode 4
         versionName "0.4"
 
