@@ -287,8 +287,9 @@ class BookActivity : ComponentActivity() {
                         BoxWithConstraints {
                             AndroidView(modifier = Modifier.size(maxWidth, maxHeight),
                                 factory = {context->
-                                    val initBmp =bookIO.loadBitmapOrNull(book.getPage(pageIdx.value!!))
-                                    CanvasBoox(context, initBmp, initialPageIdx).apply {
+                                    val initBmp = bookIO.loadBitmapOrNull(book.getPage(pageIdx.value!!))
+                                    val bgBmp = bookIO.loadBgOrNull(book)
+                                    CanvasBoox(context, initBmp, bgBmp, initialPageIdx).apply {
                                         setOnUpdateListener { notifyBitmapUpdate(it) }
                                         setOnUndoStateListener { undo, redo-> notifyUndoStateChanged(undo, redo) }
                                     }

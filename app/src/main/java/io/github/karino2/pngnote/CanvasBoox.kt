@@ -8,7 +8,7 @@ import android.view.View
 import kotlin.concurrent.withLock
 
 
-class CanvasBoox(context: Context, var initialBmp: Bitmap? = null, initialPageIdx:Int  = 0) : View(context) {
+class CanvasBoox(context: Context, var initialBmp: Bitmap? = null, private val background: Bitmap?, initialPageIdx:Int  = 0) : View(context) {
     // bitmap committed.
     var bitmap: Bitmap? = null
     private lateinit var bmpCanvas: Canvas
@@ -17,6 +17,7 @@ class CanvasBoox(context: Context, var initialBmp: Bitmap? = null, initialPageId
     private val eraserWidth = 30f
 
     private val bmpPaint = Paint(Paint.DITHER_FLAG)
+    private val bmpPaintWithBG = Paint(Paint.DITHER_FLAG).apply { xfermode = PorterDuffXfermode(PorterDuff.Mode.MULTIPLY) }
     private val pathPaint = Paint().apply {
         isAntiAlias = true
         isDither = true
