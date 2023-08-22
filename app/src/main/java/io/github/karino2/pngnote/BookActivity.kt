@@ -321,8 +321,11 @@ class BookActivity : ComponentActivity() {
                                 IconButton(onClick={ addNewPageAndGo() }, enabled = lastPage) {
                                     Icon(imageVector = Icons.Default.Add, contentDescription = "Add Page")
                                 }
-                                IconButton(onClick={ share() }, enabled = true) {
-                                    Icon(imageVector = Icons.Default.Share, contentDescription = "Share")
+                                if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
+                                {
+                                    IconButton(onClick={ share() }, enabled = true) {
+                                        Icon(imageVector = Icons.Default.Share, contentDescription = "Share")
+                                    }
                                 }
                             }
                         },
