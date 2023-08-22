@@ -4,6 +4,7 @@ import android.graphics.*
 import android.util.Size
 import androidx.core.graphics.toRect
 import androidx.core.graphics.toRectF
+import io.github.karino2.pngnote.ui.CanvasBoox
 import java.lang.Integer.min
 
 class LoupePanel(private val toolHeight:Int, private val size: Size, private val holder: CanvasBoox) {
