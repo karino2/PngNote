@@ -1,10 +1,11 @@
-package io.github.karino2.pngnote
+package io.github.karino2.pngnote.ui
 
 import android.content.Context
 import android.graphics.*
 import android.view.MotionEvent
 import android.view.View
 import java.util.*
+import io.github.karino2.pngnote.BookActivity
 import kotlin.concurrent.withLock
 
 
