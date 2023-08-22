@@ -343,6 +343,7 @@ class BookActivity : ComponentActivity() {
                                     val initBmp = bookIO.loadBitmapOrNull(book.getPage(pageIdx.value!!))
                                     val bgBmp = bookIO.loadBgOrNull(book)
                                     CanvasBoox(context, initBmp, bgBmp, initialPageIdx).apply {
+                                        clipToOutline = true
                                         setOnUpdateListener { notifyBitmapUpdate(it) }
                                         setOnUndoStateListener { undo, redo-> notifyUndoStateChanged(undo, redo) }
                                     }
