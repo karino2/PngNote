@@ -23,8 +23,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Color.Companion.Black
+import androidx.compose.ui.graphics.Paint
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.Dp
@@ -38,7 +40,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-
+data class Thumbnail(val page: Bitmap, val bg: Bitmap?)
 
 
 class BookListActivity : ComponentActivity() {
@@ -69,10 +71,12 @@ class BookListActivity : ComponentActivity() {
     private val files = MutableLiveData(emptyList<DocumentFile>())
     private val thumbnails =  files.switchMap { flist ->
         liveData {
-            emit(flist.map { blankBitmap })
+            emit(flist.map { Thumbnail(blankBitmap, null) })
             withContext(lifecycleScope.coroutineContext + Dispatchers.IO) {
                 val thumbs = flist.map {
-                    bookIO.loadThumbnail(it) ?: blankBitmap
+                    val page = bookIO.loadThumbnail(it) ?: blankBitmap
+                    val bg = bookIO.loadBgThumbnail(it)
+                    Thumbnail(page, bg)
                 }
                 withContext(Dispatchers.Main) {
                     emit(thumbs)
@@ -221,7 +225,7 @@ val blankBitmap: Bitmap = Bitmap.createBitmap(100, 100, Bitmap.Config.ARGB_8888)
 
 
 @Composable
-fun BookList(bookDirs: LiveData<List<DocumentFile>>, thumbnails: LiveData<List<Bitmap>>, bookSize : Pair<Dp, Dp>,  gotoBook : (dir: DocumentFile)->Unit) {
+fun BookList(bookDirs: LiveData<List<DocumentFile>>, thumbnails: LiveData<List<Thumbnail>>, bookSize : Pair<Dp, Dp>,  gotoBook : (dir: DocumentFile)->Unit) {
     val bookListState = bookDirs.observeAsState(emptyList())
     val thumbnailListState = thumbnails.observeAsState(emptyList())
 
@@ -236,7 +240,7 @@ fun BookList(bookDirs: LiveData<List<DocumentFile>>, thumbnails: LiveData<List<B
 }
 
 @Composable
-fun TwoBook(books: List<DocumentFile>, thumbnails: List<Bitmap>, leftIdx: Int, bookSize : Pair<Dp, Dp>, gotoBook : (dir: DocumentFile)->Unit) {
+fun TwoBook(books: List<DocumentFile>, thumbnails: List<Thumbnail>, leftIdx: Int, bookSize : Pair<Dp, Dp>, gotoBook : (dir: DocumentFile)->Unit) {
     Row {
         Card(modifier=Modifier.weight(1f).padding(5.dp), border= BorderStroke(2.dp, Color.Black)) {
             val book =books[leftIdx]
@@ -254,10 +258,18 @@ fun TwoBook(books: List<DocumentFile>, thumbnails: List<Bitmap>, leftIdx: Int, b
 }
 
 @Composable
-fun Book(bookDir: DocumentFile, bookSize : Pair<Dp, Dp>, thumbnail: Bitmap, onOpenBook : ()->Unit) {
+fun Book(bookDir: DocumentFile, bookSize : Pair<Dp, Dp>, thumbnail: Thumbnail, onOpenBook : ()->Unit) {
     Column(horizontalAlignment = Alignment.CenterHorizontally, modifier= Modifier
         .clickable(onClick = onOpenBook)) {
-        Image(modifier= Modifier.size(bookSize.first, bookSize.second).padding(5.dp, 10.dp), bitmap = thumbnail.asImageBitmap(), contentDescription = "Book Image")
+        Canvas(modifier= Modifier
+            .size(bookSize.first, bookSize.second)
+            .padding(5.dp, 10.dp)) {
+            val blendMode = thumbnail.bg?.let { bg->
+                drawImage(bg.asImageBitmap())
+                BlendMode.Multiply
+            } ?: BlendMode.SrcOver
+            drawImage(thumbnail.page.asImageBitmap(), blendMode=blendMode)
+        }
         Text(bookDir.name!!, fontSize = 20.sp)
     }
 }

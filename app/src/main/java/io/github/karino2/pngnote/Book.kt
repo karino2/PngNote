@@ -6,8 +6,6 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.widget.Toast
 import androidx.documentfile.provider.DocumentFile
-import java.util.concurrent.locks.Lock
-import kotlin.concurrent.withLock
 
 class BookList(val dir: DocumentFile, val resolver: ContentResolver) {
     companion object {
@@ -29,11 +27,11 @@ class BookList(val dir: DocumentFile, val resolver: ContentResolver) {
 }
 
 
-class Book(val bookDir: DocumentFile, val pages: List<DocumentFile>) {
+class Book(val bookDir: DocumentFile, val pages: List<DocumentFile>, val bgImage: DocumentFile?) {
     fun addPage() : Book {
         // page name start form 0!
         val pngFile = BookPage.createEmptyFile(bookDir, pages.size)
-        return Book(bookDir, pages + pngFile)
+        return Book(bookDir, pages + pngFile, bgImage)
     }
 
     fun getPage(idx: Int) = BookPage(pages[idx], idx)
@@ -63,11 +61,24 @@ class BookIO(private val resolver: ContentResolver) {
         }
     }
 
-    fun loadThumbnail(bookDir: DocumentFile) : Bitmap? {
-        return bookDir.findFile("0000.png")?.let { loadBitmapThumbnail(it, 3) }
+    private fun loadThumbnail(
+        bookDir: DocumentFile,
+        displayName: String
+    ): Bitmap? {
+        return bookDir.findFile(displayName)?.let { loadBitmapThumbnail(it, 3) }
     }
 
+    fun loadThumbnail(bookDir: DocumentFile) : Bitmap? {
+        return loadThumbnail(bookDir, "0000.png")
+    }
+
+    fun loadBgThumbnail(bookDir: DocumentFile) : Bitmap? {
+        return loadThumbnail(bookDir, "background.png")
+    }
+
+
     fun loadPageThumbnail(file: DocumentFile) = loadBitmapThumbnail(file, 4)
+    fun loadBgForGrid(bookDir: DocumentFile) = bookDir.findFile("background.png")?.let { loadBitmapThumbnail(it, 4) }
 
     private fun loadBitmapThumbnail(file: DocumentFile, sampleSize: Int) :Bitmap {
         return resolver.openFileDescriptor(file.uri, "r").use {
@@ -86,6 +97,8 @@ class BookIO(private val resolver: ContentResolver) {
     fun loadBitmap(page: BookPage) = loadBitmap(page.file)
 
     fun loadBitmapOrNull(page: BookPage) = if(isPageEmpty(page)) null else loadBitmap(page)
+
+    fun loadBgOrNull(book: Book) = book.bgImage?.let { loadBitmap(it) }
 
     fun saveBitmap(page: BookPage, bitmap: Bitmap) {
         resolver.openOutputStream(page.file.uri, "wt").use {
@@ -111,7 +124,8 @@ class BookIO(private val resolver: ContentResolver) {
         val pages = (0 .. lastPageIdx).map {
             pageMap[it] ?: BookPage.createEmptyFile(bookDir, it)
         }
-        return Book(bookDir, pages)
+        val bgFile = bookDir.findFile("background.png")
+        return Book(bookDir, pages, bgFile)
     }
 
 
