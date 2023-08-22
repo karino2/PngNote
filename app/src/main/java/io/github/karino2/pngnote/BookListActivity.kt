@@ -67,7 +67,7 @@ class BookListActivity : ComponentActivity() {
     }
 
     private val files = MutableLiveData(emptyList<DocumentFile>())
-    private val thumbnails =  Transformations.switchMap(files) { flist ->
+    private val thumbnails =  files.switchMap { flist ->
         liveData {
             emit(flist.map { blankBitmap })
             withContext(lifecycleScope.coroutineContext + Dispatchers.IO) {
