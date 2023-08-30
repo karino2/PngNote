@@ -396,7 +396,10 @@ class BookActivity : ComponentActivity() {
             }
         }
 
-        initCount.value = 1
+        // need to delay until onMeasure done. It might not be enough, but work for most of the time.
+        handler.post {
+            initCount.value = 1
+        }
 
     }
 
