@@ -9,13 +9,9 @@ import kotlin.concurrent.withLock
 import kotlin.math.abs
 
 /*
-    BitmapActorは背後で持つBitmapとそのCanvasを扱う。
-    このクラスのメソッドは基本的には同一スレッドからしか呼ばれない前提で、
-    外部から呼ぶ時にはいつも同じスレッドにwithContextしてから呼ぶようにしたい。
+    BitmapBackendは背後で持つBitmapとそのCanvasを扱う。
  */
 class BitmapBackend {
-    private val executor = Executors.newSingleThreadExecutor()
-
     private val undoList = UndoList()
 
     val eraseAccPoints = ArrayList<TouchPoint>()
@@ -191,24 +187,5 @@ class BitmapBackend {
         clearUndo()
         notifyUndoStateChanged()
         notifyBitmapUpdate()
-    }
-
-    fun post(action: (Bitmap, Canvas, UndoList) -> Unit) {
-        executor.execute {
-            val (bmp, canvas) = synchronized(this) {
-                if (bitmap == null) return@execute
-                Pair(bitmap!!, bmpCanvas!!)
-            }
-            action(bmp, canvas, undoList)
-        }
-    }
-    
-    fun postWithEnsure(width: Int, height: Int, action: (Bitmap, Canvas, UndoList) -> Unit) {
-        executor.execute {
-            val (bmp, canvas) = synchronized(this) {
-                ensureBitmap(width, height)
-            }
-            action(bmp, canvas, undoList)
-        }
     }
 }
