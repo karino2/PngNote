@@ -16,7 +16,7 @@ import androidx.core.graphics.createBitmap
 
     BOOXのrawrenderingの都合でactorになっているだけだが、他の環境でもコードを同じに保つためにactorにする。
 */
-class BitmapActor {
+class BitmapBackend {
     private val executor = Executors.newSingleThreadExecutor()
 
     var bitmap: Bitmap? = null

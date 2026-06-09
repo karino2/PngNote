@@ -7,7 +7,7 @@ import android.view.View
 
 
 class CanvasBoox(context: Context, var initialBmp: Bitmap? = null, private val background: Bitmap?, initialPageIdx:Int  = 0) : View(context) {
-    private val bitmapActor = BitmapActor()
+    private val bitmapBackend = BitmapBackend()
 
     private val pencilWidth = 3f
     private val eraserWidth = 30f
@@ -39,8 +39,7 @@ class CanvasBoox(context: Context, var initialBmp: Bitmap? = null, private val b
     fun undo(count : Int) {
         if (undoCount != count) {
             undoCount = count
-            bitmapActor.undo()
-
+            bitmapBackend.undo()
             refreshAfterUndoRedo()
         }
     }
@@ -48,22 +47,21 @@ class CanvasBoox(context: Context, var initialBmp: Bitmap? = null, private val b
     fun redo(count: Int) {
         if(redoCount != count) {
             redoCount = count
-            bitmapActor.redo()
-
+            bitmapBackend.redo()
             refreshAfterUndoRedo()
         }
     }
 
     private fun refreshAfterUndoRedo() {
-        bitmapActor.notifyBitmapUpdate()
-        bitmapActor.notifyUndoStateChanged()
+        bitmapBackend.notifyBitmapUpdate()
+        bitmapBackend.notifyUndoStateChanged()
         invalidate()
     }
 
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
         super.onSizeChanged(w, h, oldw, oldh)
 
-        bitmapActor.resize(w, h, initialBmp)
+        bitmapBackend.resize(w, h, initialBmp)
         initialBmp = null
     }
 
@@ -106,7 +104,7 @@ class CanvasBoox(context: Context, var initialBmp: Bitmap? = null, private val b
                     downHandled = false
                     path.lineTo(x, y)
 
-                    bitmapActor.drawOrErasePathToBitmap(path, currentPaint(), width, height)
+                    bitmapBackend.drawOrErasePathToBitmap(path, currentPaint(), width, height)
 
                     path.reset()
                     invalidate()
@@ -123,7 +121,7 @@ class CanvasBoox(context: Context, var initialBmp: Bitmap? = null, private val b
 
     override fun onDraw(canvas: Canvas) {
         canvas.drawColor(Color.WHITE)
-        canvas.drawBitmap(bitmapActor.bitmap!!, 0f, 0f, bmpPaint)
+        canvas.drawBitmap(bitmapBackend.bitmap!!, 0f, 0f, bmpPaint)
         canvas.drawPath(path, currentPaint())
     }
 
@@ -163,17 +161,17 @@ class CanvasBoox(context: Context, var initialBmp: Bitmap? = null, private val b
         pageIdx = idx
 
         val newbmp = bitmapLoader(idx)
-        bitmapActor.setupNewPage(width, height, newbmp)
+        bitmapBackend.setupNewPage(width, height, newbmp)
 
         invalidate()
     }
 
     fun setOnUpdateListener(updateBmpListener: (bmp: Bitmap) -> Unit) {
-        bitmapActor.updateBmpListener = updateBmpListener
+        bitmapBackend.updateBmpListener = updateBmpListener
     }
 
     fun setOnUndoStateListener(undoStateListener: (undo:Boolean, redo:Boolean) -> Unit) {
-        bitmapActor.undoStateListener = undoStateListener
+        bitmapBackend.undoStateListener = undoStateListener
     }
 
 
