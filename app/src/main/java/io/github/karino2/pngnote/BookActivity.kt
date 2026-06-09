@@ -347,7 +347,7 @@ class BookActivity : ComponentActivity() {
                                     Icon(painter = painterResource(id = R.drawable.outline_last_page), contentDescription = "Last Page")
                                 }
 
-                                IconButton(onClick={ addNewPageAndGo() }, enabled = lastPage) {
+                                IconButton(onClick={ addNewPageAndGo() }, enabled = true) {
                                     Icon(imageVector = Icons.Default.Add, contentDescription = "Add Page")
                                 }
                                 IconButton(onClick={ share() }, enabled = true) {
