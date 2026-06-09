@@ -2,6 +2,8 @@ package io.github.karino2.pngnote.ui
 
 import android.content.Context
 import android.graphics.*
+import android.graphics.Color
+import android.graphics.Color.WHITE
 import android.view.SurfaceHolder
 import android.view.SurfaceView
 import com.onyx.android.sdk.api.device.epd.EpdController
@@ -60,7 +62,7 @@ class CanvasBoox(context: Context, var initialBmp: Bitmap? = null, private val b
     private fun refreshAfterUndoRedo() {
         bitmapBackend.notifyBitmapUpdate()
         bitmapBackend.notifyUndoStateChanged()
-        refreshUI()
+        applyBackendToSurface()
     }
 
     private var initCount = 0
@@ -81,7 +83,7 @@ class CanvasBoox(context: Context, var initialBmp: Bitmap? = null, private val b
             // eraser tends to fail for update screen.
             // I don't know the reason. Just update every time eraser coming.
             if (isEraser)
-                refreshUI()
+                applyBackendToSurface()
         }
 
         override fun onBeginRawErasing(p0: Boolean, p1: TouchPoint?) {
@@ -89,28 +91,27 @@ class CanvasBoox(context: Context, var initialBmp: Bitmap? = null, private val b
             EpdController.enablePost(this@CanvasBoox, 1)
             bitmapBackend.clearEraseAccPoints()
             bitmapBackend.addErasePoint(p1!!)
-            updateBmpToSurface()
         }
 
         override fun onEndRawErasing(p0: Boolean, p1: TouchPoint?) {
+            applyBackendToSurface()
         }
 
         override fun onRawErasingTouchPointMoveReceived(p0: TouchPoint?) {
             bitmapBackend.addErasePoint(p0!!)
             if(bitmapBackend.needEraseUpdate) {
                 // Log.d("PngNote", "erase update")
-                eraseByPointsAndUpdate()
+                issueBackendErase()
             }
         }
 
         override fun onRawErasingTouchPointListReceived(plist: TouchPointList) {
             // Log.d("PngNote", "point list, update")
-            eraseByPointsAndUpdate()
+            issueBackendErase()
         }
 
-        private fun eraseByPointsAndUpdate() {
+        private fun issueBackendErase() {
             bitmapBackend.eraseByPoints(width, height, eraserPaint)
-            updateBmpToSurface()
         }
 
     }
@@ -244,8 +245,8 @@ class CanvasBoox(context: Context, var initialBmp: Bitmap? = null, private val b
 
     fun onRestart(count: Int) {
         if (count != restartCount) {
+            applyBackendToSurface()
             applyRawDrawingSettings()
-            refreshUI()
 
             restartCount = count
         }
@@ -290,7 +291,7 @@ class CanvasBoox(context: Context, var initialBmp: Bitmap? = null, private val b
             .setStrokeStyle(TouchHelper.STROKE_STYLE_PENCIL)
             .setStrokeColor(Color.BLACK)
 
-        refreshUI()
+        applyBackendToSurface()
     }
 
     private fun eraser() {
@@ -303,36 +304,47 @@ class CanvasBoox(context: Context, var initialBmp: Bitmap? = null, private val b
             .setStrokeStyle(TouchHelper.STROKE_STYLE_PENCIL)
             .setStrokeColor(Color.WHITE)
 
-        refreshUI()
+        applyBackendToSurface()
     }
 
 
     private var refreshCount = 0
     fun refreshUI(count: Int) {
         if(refreshCount != count) {
-            refreshUI()
+            applyBackendToSurface()
             refreshCount = count
         }
     }
 
-
-    private fun refreshUI() {
-        updateBmpToSurface()
-
-        touchHelper.setRawDrawingEnabled(false)
-        touchHelper.setRawDrawingEnabled(true)
+    fun withTempNoRawRendering(f: ()->Unit) {
+        val isRawRendering = touchHelper.isRawDrawingRenderEnabled
+        if (isRawRendering)
+        {
+            touchHelper.setRawDrawingEnabled(false)
+            touchHelper.closeRawDrawing()
+        }
+        f()
+        if (isRawRendering)
+        {
+            touchHelper.openRawDrawing()
+            touchHelper.setRawDrawingEnabled(true)
+        }
     }
 
-    private fun updateBmpToSurface() {
-        val (bmp, _) = bitmapBackend.ensureBitmap(this.width, this.height)
-        holder.lockCanvas()?.let { lockCanvas ->
-            lockCanvas.drawColor(Color.WHITE)
-            val paint = background?.let { bg->
-                lockCanvas.drawBitmap(bg, 0f, 0f, bmpPaint)
-                bmpPaintWithBG
-            } ?: bmpPaint
-            lockCanvas.drawBitmap(bmp, 0f, 0f, paint)
-            holder.unlockCanvasAndPost(lockCanvas)
+
+
+    private fun applyBackendToSurface() {
+        withTempNoRawRendering {
+            val (bmp, _) = bitmapBackend.ensureBitmap(this.width, this.height)
+            this.holder.lockCanvas()?.let { lockCanvas ->
+                lockCanvas.drawColor(WHITE)
+                val paint = this.background?.let<Bitmap, Paint> { bg ->
+                    lockCanvas.drawBitmap(bg, 0f, 0f, bmpPaint)
+                    bmpPaintWithBG
+                } ?: bmpPaint
+                lockCanvas.drawBitmap(bmp, 0f, 0f, paint)
+                this.holder.unlockCanvasAndPost(lockCanvas)
+            }
         }
     }
 
@@ -356,7 +368,7 @@ class CanvasBoox(context: Context, var initialBmp: Bitmap? = null, private val b
         val newbmp = bitmapLoader(idx)
         bitmapBackend.setupNewPage(width, height, newbmp)
 
-        refreshUI()
+        applyBackendToSurface()
     }
 
     private fun cleanSurfaceView(): Boolean {
