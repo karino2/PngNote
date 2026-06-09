@@ -1,6 +1,7 @@
 plugins {
     id 'com.android.application'
     id 'kotlin-android'
+    id 'org.jetbrains.kotlin.plugin.compose'
 }
 
 android {
@@ -11,8 +12,8 @@ android {
         minSdk 26
         //noinspection EditedTargetSdkVersion
         targetSdk 34
-        versionCode 2
-        versionName "0.2"
+        versionCode 4
+        versionName "0.4"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -27,18 +28,21 @@ android {
         }
     }
     compileOptions {
-        sourceCompatibility JavaVersion.VERSION_1_8
-        targetCompatibility JavaVersion.VERSION_1_8
+        sourceCompatibility JavaVersion.VERSION_11
+        targetCompatibility JavaVersion.VERSION_11
     }
     kotlinOptions {
         jvmTarget = '11'
     }
+    packagingOptions {
+        jniLibs {
+            pickFirsts += ['lib/*/libc++_shared.so']
+        }
+    }
+
 
     buildFeatures {
         compose true
-    }
-    composeOptions {
-        kotlinCompilerExtensionVersion "1.5.1"
     }
     namespace 'io.github.karino2.pngnote'
 }
@@ -48,6 +52,13 @@ dependencies {
     implementation 'androidx.core:core-ktx:1.10.1'
     implementation 'androidx.appcompat:appcompat:1.6.1'
     implementation 'com.google.android.material:material:1.9.0'
+
+
+    // implementation('com.onyx.android.sdk:onyxsdk-pen:1.2.1')
+    implementation fileTree(dir: 'libs', include: ['*.aar'])
+    // used in RawInputManager.
+    implementation group: 'io.reactivex.rxjava2', name: 'rxjava', version: '2.2.21'
+    implementation group: 'io.reactivex.rxjava2', name: 'rxandroid', version: '2.1.1'
 
     implementation "androidx.compose.ui:ui:$compose_version"
     implementation "androidx.compose.material:material:$compose_version"
