@@ -157,43 +157,60 @@ class CanvasBoox(context: Context, var initialBmp: Bitmap? = null, private val b
 
     }
 
+    private var lastOpenedLimit: Rect? = null
+
+    private fun calcVisibleRect(): Rect {
+        val limit = Rect()
+        getLocalVisibleRect(limit)
+
+        // I don't know the reason, but this geometry seems to lower for 40px.
+        limit.offset(0, -40)
+
+        return limit
+    }
+
+    private fun isRawRenderingBecomesStale(limit: Rect): Boolean =
+        touchHelper.isRawDrawingRenderEnabled && (lastOpenedLimit == null || limit.width() != lastOpenedLimit?.width() || limit.height() != lastOpenedLimit?.height())
+
+
     private val touchHelper by lazy { TouchHelper.create(this, inputCallback) }
-    private val layoutChangedListener : OnLayoutChangeListener by lazy {
-        OnLayoutChangeListener { v, left, top, right, bottom, oldLeft, oldTop, oldRight, oldBottom ->
-            /**
-             * Called when the layout bounds of a view changes due to layout processing.
-             *
-             * @param v The view whose bounds have changed.
-             * @param left The new value of the view's left property.
-             * @param top The new value of the view's top property.
-             * @param right The new value of the view's right property.
-             * @param bottom The new value of the view's bottom property.
-             * @param oldLeft The previous value of the view's left property.
-             * @param oldTop The previous value of the view's top property.
-             * @param oldRight The previous value of the view's right property.
-             * @param oldBottom The previous value of the view's bottom property.
-             */
-            if(cleanSurfaceView()) {
-                removeOnLayoutChangeListener(layoutChangedListener)
-            }
 
-            val exclude = emptyList<Rect>()
-            val limit = Rect()
-            getLocalVisibleRect(limit)
-
-            // I don't know the reason, but this geometry seems to low for 40px.
-            // offset here.
-            limit.offset(0, -40)
-            touchHelper.setStrokeWidth(pencilWidth)
-                .setStrokeColor(Color.BLACK)
-                .setLimitRect(limit, exclude)
-                .openRawDrawing()
-            touchHelper.setStrokeStyle(TouchHelper.STROKE_STYLE_PENCIL)
+    private fun ensureCloseRawRendering() {
+        if (touchHelper.isRawDrawingRenderEnabled) {
+            touchHelper.setRawDrawingEnabled(false)
+            touchHelper.isRawDrawingRenderEnabled = false
+            touchHelper.closeRawDrawing()
         }
     }
 
-    // Initial creation is special, regards initial state as attached.
-    private var detached = false
+    private fun applyRawDrawingSettings() {
+        val limit = calcVisibleRect()
+        if (!holder.surface.isValid || limit.width() <= 0 || limit.height() <= 0) return
+
+        if (isRawRenderingBecomesStale(limit)) {
+            ensureCloseRawRendering()
+        }
+
+        if (!touchHelper.isRawDrawingRenderEnabled) {
+            clearSurfaceViewByBitmap(holder)
+            touchHelper.setStrokeWidth(pencilWidth)
+                .setStrokeColor(Color.BLACK)
+                .setLimitRect(limit, emptyList<Rect>())
+                .setStrokeStyle(TouchHelper.STROKE_STYLE_PENCIL)
+                .openRawDrawing()
+            touchHelper.setRawDrawingEnabled(true)
+            touchHelper.isRawDrawingRenderEnabled = true
+            lastOpenedLimit = Rect(limit)
+        } else {
+            touchHelper.setLimitRect(limit, emptyList<Rect>())
+        }
+    }
+
+    private val layoutChangedListener : OnLayoutChangeListener by lazy {
+        OnLayoutChangeListener { v, left, top, right, bottom, oldLeft, oldTop, oldRight, oldBottom ->
+            applyRawDrawingSettings()
+        }
+    }
 
     private val surfaceCallback : SurfaceHolder.Callback by lazy { object : SurfaceHolder.Callback {
         /**
@@ -206,18 +223,7 @@ class CanvasBoox(context: Context, var initialBmp: Bitmap? = null, private val b
          * @param holder The SurfaceHolder whose surface is being created.
          */
         override fun surfaceCreated(holder: SurfaceHolder) {
-            bitmap?.let {bmp ->
-                holder.lockCanvas()?.let { lockCanvas->
-                    lockCanvas.drawColor(Color.WHITE)
-                    val paint = background?.let { bg->
-                        lockCanvas.drawBitmap(bg, 0f, 0f, bmpPaint)
-                        bmpPaintWithBG
-                    } ?: bmpPaint
-                    lockCanvas.drawBitmap(bmp, 0f, 0f, paint)
-                    holder.unlockCanvasAndPost(lockCanvas)
-                }
-                true
-            } ?: cleanSurfaceView()
+            applyRawDrawingSettings()
         }
 
         /**
@@ -244,12 +250,24 @@ class CanvasBoox(context: Context, var initialBmp: Bitmap? = null, private val b
          * @param holder The SurfaceHolder whose surface is being destroyed.
          */
         override fun surfaceDestroyed(holder: SurfaceHolder) {
-            holder.removeCallback(surfaceCallback)
-            touchHelper.closeRawDrawing()
-            detached = true
         }
 
     } }
+
+    private fun clearSurfaceViewByBitmap(holder: SurfaceHolder) {
+        bitmap?.let { bmp ->
+            holder.lockCanvas()?.let { lockCanvas ->
+                lockCanvas.drawColor(Color.WHITE)
+                val paint = background?.let { bg ->
+                    lockCanvas.drawBitmap(bg, 0f, 0f, bmpPaint)
+                    bmpPaintWithBG
+                } ?: bmpPaint
+                lockCanvas.drawBitmap(bmp, 0f, 0f, paint)
+                holder.unlockCanvasAndPost(lockCanvas)
+            }
+            true
+        } ?: cleanSurfaceView()
+    }
 
     fun firstInit() {
         touchHelper
@@ -260,8 +278,7 @@ class CanvasBoox(context: Context, var initialBmp: Bitmap? = null, private val b
     fun ensureInit(callCount: Int) {
         if(callCount == 1 && initCount != 1) {
             initCount = 1
-            startRawRendering()
-            detached = false
+            applyRawDrawingSettings()
         }
     }
 
@@ -269,15 +286,34 @@ class CanvasBoox(context: Context, var initialBmp: Bitmap? = null, private val b
 
     fun onRestart(count: Int) {
         if (count != restartCount) {
-            holder.addCallback(surfaceCallback)
-            touchHelper.openRawDrawing()
-            startRawRendering()
+            applyRawDrawingSettings()
             refreshUI()
 
-            detached = false
             restartCount = count
         }
     }
+
+    private var tryRawDrawingCount = 0
+
+    fun onTryRawDrawing(count: Int) {
+        if (count != tryRawDrawingCount) {
+            applyRawDrawingSettings()
+            tryRawDrawingCount = count
+        }
+    }
+
+
+    private var ensureCloseCount = 0
+
+    fun onEnsureClose(count: Int) {
+        if (count != ensureCloseCount) {
+            ensureCloseRawRendering()
+
+            ensureCloseCount = count
+        }
+    }
+
+
 
     private fun ensureBitmap() :Pair<Bitmap, Canvas> {
         if(bitmap == null) {
@@ -366,13 +402,6 @@ class CanvasBoox(context: Context, var initialBmp: Bitmap? = null, private val b
         )
         holder.unlockCanvasAndPost(canvas)
     }
-
-    private fun startRawRendering() {
-        touchHelper.setRawDrawingEnabled(true)
-        touchHelper.isRawDrawingRenderEnabled = true
-    }
-
-
 
     private var isPencil = true
     private val isEraser : Boolean

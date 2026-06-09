@@ -91,6 +91,8 @@ class BookActivity : ComponentActivity() {
     private val pageIdx by lazy { MutableLiveData(initialPageIdx) }
     private val pageNum = MutableLiveData(0)
     private val restartCount = MutableLiveData(0)
+    private val closeCount = mutableStateOf(0)
+    private val tryRawDrawing = mutableStateOf(0)
     private val canRedo = MutableLiveData(false)
     private val undoCount = MutableLiveData(0)
     private val redoCount = MutableLiveData(0)
@@ -162,17 +164,27 @@ class BookActivity : ComponentActivity() {
 
     private val handler = Handler()
 
+    override fun onResume() {
+        super.onResume()
+        tryRawDrawing.value += 1
+    }
+
     override fun onRestart() {
         super.onRestart()
 
-        // Some time, it seems this call happens too early (before surface is available)
-        // especially when back from "Share".
-        // It had better handle those case in CanvasBoox properly, but just add delay here for a workaround.
-        handler.postDelayed( {restartCount.value = restartCount.value!!+1}, 300)
+        restartCount.value = restartCount.value!!+1
+    }
+
+    // onRestart, onWindowFocusChanged, layout race condition is very complex.
+    // always try enable.
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        if (hasFocus) restartCount.value = restartCount.value!!+1
     }
 
     override fun onStop() {
         ensureSave()
+        closeCount.value = closeCount.value +1
         super.onStop()
     }
 
@@ -384,6 +396,8 @@ class BookActivity : ComponentActivity() {
                                         }
                                     })
                                     it.onRestart(restartCountState.value!!)
+                                    it.onEnsureClose(closeCount.value)
+                                    it.onTryRawDrawing(tryRawDrawing.value)
                                     it.undo(undoCountState.value)
                                     it.redo(redoCountState.value)
                                     it.refreshUI(refreshCountState.value)
