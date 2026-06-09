@@ -10,15 +10,9 @@ import kotlin.concurrent.withLock
 import androidx.core.graphics.createBitmap
 
 /*
-    BitmapActorは背後で持つBitmapとそのCanvasを扱う。
-    このクラスのメソッドは基本的には同一スレッドからしか呼ばれない前提で、
-    外部から呼ぶ時にはいつも同じスレッドにwithContextしてから呼ぶようにしたい。
-
-    BOOXのrawrenderingの都合でactorになっているだけだが、他の環境でもコードを同じに保つためにactorにする。
+   BitmapBackendは背後で持つBitmapとそのCanvasを扱う。
 */
 class BitmapBackend {
-    private val executor = Executors.newSingleThreadExecutor()
-
     var bitmap: Bitmap? = null
         private set
     var bmpCanvas: Canvas? = null
@@ -178,27 +172,5 @@ class BitmapBackend {
             }
             notifyBitmapUpdate()
         } ?: return cleanInit(width, height, initialBmp)
-    }
-
-    fun post(action: (Bitmap, Canvas, UndoList) -> Unit) {
-        executor.execute {
-            val (bmp, canvas) = synchronized(this) {
-                // We assume ensureBitmap is called before any post actions that need them, 
-                // or the action handles nulls. But for now, let's just provide them if available.
-                if (bitmap == null) return@execute
-                Pair(bitmap!!, bmpCanvas!!)
-            }
-            action(bmp, canvas, undoList)
-        }
-    }
-    
-    // For cases where we need to ensure bitmap is created on the actor thread or before posting
-    fun postWithEnsure(width: Int, height: Int, action: (Bitmap, Canvas, UndoList) -> Unit) {
-        executor.execute {
-            val (bmp, canvas) = synchronized(this) {
-                ensureBitmap(width, height)
-            }
-            action(bmp, canvas, undoList)
-        }
     }
 }
