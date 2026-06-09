@@ -390,10 +390,12 @@ class CanvasBoox(context: Context, var initialBmp: Bitmap? = null, private val b
                 Rect(0, 0, it.width, it.height),
                 Rect(0, 0, width, height),
                 paint)
-            bitmapBackend.cleanInit(width, height, initialBmp)
-            initialBmp = null
         }
         holder.unlockCanvasAndPost(canvas)
+        initialBmp?.let {
+            bitmapBackend.cleanInit(width, height, it)
+            initialBmp = null
+        }
         return true
     }
 
