@@ -26,6 +26,9 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.lifecycleScope
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import io.github.karino2.pngnote.ui.Page
 import io.github.karino2.pngnote.ui.PageGrid
 import io.github.karino2.pngnote.ui.theme.PngNoteTheme
@@ -182,7 +185,10 @@ class BookListActivity : ComponentActivity() {
 
 @Composable
 fun NewBookPopup(onNewBook : (bookName: String)->Unit, onDismiss: ()->Unit) {
-    var textState by remember { mutableStateOf("") }
+    val defaultText = remember {
+        SimpleDateFormat("yyyy-MM-dd-HHmm-ss", Locale.US).format(Date())
+    }
+    var textState by remember { mutableStateOf(defaultText) }
     val requester = FocusRequester()
     val buttonColors = booxTextButtonColors()
     AlertDialog(
