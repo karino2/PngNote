@@ -109,7 +109,7 @@ class BookListActivity : ComponentActivity() {
         return rootDir.listFiles()
             .filter { it.isDirectory }
             .toList()
-            .sortedByDescending { it.name }
+            .sortedBy { it.name }
     }
 
     private val bookSizeDP by lazy {
