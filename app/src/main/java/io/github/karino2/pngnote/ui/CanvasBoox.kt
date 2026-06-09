@@ -10,9 +10,11 @@ import kotlin.concurrent.withLock
 
 
 class CanvasBoox(context: Context, var initialBmp: Bitmap? = null, private val background: Bitmap?, initialPageIdx:Int  = 0) : View(context) {
-    // bitmap committed.
-    var bitmap: Bitmap? = null
-    private lateinit var bmpCanvas: Canvas
+    private val bitmapActor = BitmapActor()
+    val bitmap: Bitmap?
+        get() = bitmapActor.bitmap
+    val bmpCanvas: Canvas?
+        get() = bitmapActor.bmpCanvas
 
     private val pencilWidth = 3f
     private val eraserWidth = 30f
@@ -47,7 +49,7 @@ class CanvasBoox(context: Context, var initialBmp: Bitmap? = null, private val b
         if (undoCount != count) {
             undoCount = count
             BookActivity.bitmapLock.withLock {
-                undoList.undo(bmpCanvas)
+                bmpCanvas?.let { undoList.undo(it) }
             }
 
             refreshAfterUndoRedo()
@@ -58,7 +60,7 @@ class CanvasBoox(context: Context, var initialBmp: Bitmap? = null, private val b
         if(redoCount != count) {
             redoCount = count
             BookActivity.bitmapLock.withLock {
-                undoList.redo(bmpCanvas)
+                bmpCanvas?.let { undoList.redo(it) }
             }
 
             refreshAfterUndoRedo()
@@ -70,7 +72,7 @@ class CanvasBoox(context: Context, var initialBmp: Bitmap? = null, private val b
     }
 
     private fun refreshAfterUndoRedo() {
-        updateBmpListener(bitmap!!)
+        bitmap?.let { updateBmpListener(it) }
         notifyUndoStateChanged()
         invalidate()
     }
