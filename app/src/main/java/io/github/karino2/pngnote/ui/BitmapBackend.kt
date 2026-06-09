@@ -13,7 +13,7 @@ import kotlin.math.abs
     このクラスのメソッドは基本的には同一スレッドからしか呼ばれない前提で、
     外部から呼ぶ時にはいつも同じスレッドにwithContextしてから呼ぶようにしたい。
  */
-class BitmapActor {
+class BitmapBackend {
     private val executor = Executors.newSingleThreadExecutor()
 
     private val undoList = UndoList()

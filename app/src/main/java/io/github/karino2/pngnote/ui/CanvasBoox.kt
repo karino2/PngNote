@@ -12,7 +12,7 @@ import com.onyx.android.sdk.pen.data.TouchPointList
 
 
 class CanvasBoox(context: Context, var initialBmp: Bitmap? = null, private val background: Bitmap?, initialPageIdx:Int  = 0) : SurfaceView(context) {
-    private val bitmapActor = BitmapActor()
+    private val bitmapBackend = BitmapBackend()
 
     private val pencilWidth = 3f
     private val eraserWidth = 30f
@@ -44,7 +44,7 @@ class CanvasBoox(context: Context, var initialBmp: Bitmap? = null, private val b
     fun undo(count : Int) {
         if (undoCount != count) {
             undoCount = count
-            bitmapActor.undo()
+            bitmapBackend.undo()
             refreshAfterUndoRedo()
         }
     }
@@ -52,14 +52,14 @@ class CanvasBoox(context: Context, var initialBmp: Bitmap? = null, private val b
     fun redo(count: Int) {
         if(redoCount != count) {
             redoCount = count
-            bitmapActor.redo()
+            bitmapBackend.redo()
             refreshAfterUndoRedo()
         }
     }
 
     private fun refreshAfterUndoRedo() {
-        bitmapActor.notifyBitmapUpdate()
-        bitmapActor.notifyUndoStateChanged()
+        bitmapBackend.notifyBitmapUpdate()
+        bitmapBackend.notifyUndoStateChanged()
         refreshUI()
     }
 
@@ -87,8 +87,8 @@ class CanvasBoox(context: Context, var initialBmp: Bitmap? = null, private val b
         override fun onBeginRawErasing(p0: Boolean, p1: TouchPoint?) {
             // Log.d("PngNote", "erase begin")
             EpdController.enablePost(this@CanvasBoox, 1)
-            bitmapActor.clearEraseAccPoints()
-            bitmapActor.addErasePoint(p1!!)
+            bitmapBackend.clearEraseAccPoints()
+            bitmapBackend.addErasePoint(p1!!)
             updateBmpToSurface()
         }
 
@@ -96,8 +96,8 @@ class CanvasBoox(context: Context, var initialBmp: Bitmap? = null, private val b
         }
 
         override fun onRawErasingTouchPointMoveReceived(p0: TouchPoint?) {
-            bitmapActor.addErasePoint(p0!!)
-            if(bitmapActor.needEraseUpdate) {
+            bitmapBackend.addErasePoint(p0!!)
+            if(bitmapBackend.needEraseUpdate) {
                 // Log.d("PngNote", "erase update")
                 eraseByPointsAndUpdate()
             }
@@ -109,7 +109,7 @@ class CanvasBoox(context: Context, var initialBmp: Bitmap? = null, private val b
         }
 
         private fun eraseByPointsAndUpdate() {
-            bitmapActor.eraseByPoints(width, height, eraserPaint)
+            bitmapBackend.eraseByPoints(width, height, eraserPaint)
             updateBmpToSurface()
         }
 
@@ -213,7 +213,7 @@ class CanvasBoox(context: Context, var initialBmp: Bitmap? = null, private val b
     } }
 
     private fun clearSurfaceViewByBitmap(holder: SurfaceHolder) {
-        bitmapActor.bitmap?.let { bmp ->
+        bitmapBackend.bitmap?.let { bmp ->
             holder.lockCanvas()?.let { lockCanvas ->
                 lockCanvas.drawColor(Color.WHITE)
                 val paint = background?.let { bg ->
@@ -273,7 +273,7 @@ class CanvasBoox(context: Context, var initialBmp: Bitmap? = null, private val b
 
     private fun drawPointsToBitmap(points: List<TouchPoint>) {
         val paint = if(isPencil) pathPaint else eraserPaint
-        bitmapActor.drawOrErasePointsToBitmap(points, paint, width, height)
+        bitmapBackend.drawOrErasePointsToBitmap(points, paint, width, height)
     }
 
     private var isPencil = true
@@ -324,7 +324,7 @@ class CanvasBoox(context: Context, var initialBmp: Bitmap? = null, private val b
     }
 
     private fun updateBmpToSurface() {
-        val (bmp, _) = bitmapActor.ensureBitmap(this.width, this.height)
+        val (bmp, _) = bitmapBackend.ensureBitmap(this.width, this.height)
         holder.lockCanvas()?.let { lockCanvas ->
             lockCanvas.drawColor(Color.WHITE)
             val paint = background?.let { bg->
@@ -354,7 +354,7 @@ class CanvasBoox(context: Context, var initialBmp: Bitmap? = null, private val b
         pageIdx = idx
 
         val newbmp = bitmapLoader(idx)
-        bitmapActor.setupNewPage(width, height, newbmp)
+        bitmapBackend.setupNewPage(width, height, newbmp)
 
         refreshUI()
     }
@@ -378,7 +378,7 @@ class CanvasBoox(context: Context, var initialBmp: Bitmap? = null, private val b
                 Rect(0, 0, it.width, it.height),
                 Rect(0, 0, width, height),
                 paint)
-            bitmapActor.cleanInit(width, height, initialBmp)
+            bitmapBackend.cleanInit(width, height, initialBmp)
             initialBmp = null
         }
         holder.unlockCanvasAndPost(canvas)
@@ -386,11 +386,11 @@ class CanvasBoox(context: Context, var initialBmp: Bitmap? = null, private val b
     }
 
     fun setOnUpdateListener(updateBmpListener: (bmp: Bitmap) -> Unit) {
-        bitmapActor.updateBmpListener = updateBmpListener
+        bitmapBackend.updateBmpListener = updateBmpListener
     }
 
     fun setOnUndoStateListener(undoStateListener: (undo:Boolean, redo:Boolean) -> Unit) {
-        bitmapActor.undoStateListener = undoStateListener
+        bitmapBackend.undoStateListener = undoStateListener
     }
 
 
