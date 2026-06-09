@@ -40,20 +40,24 @@ data class FastFile(val uri: Uri, val name: String, val lastModified: Long, val 
             return file
         }
 
-        fun listFiles(resolver: ContentResolver, parent: Uri) : Sequence<FastFile> {
+        fun listFiles(resolver: ContentResolver, parent: Uri) : List<FastFile> {
             val childrenUri = DocumentsContract.buildChildDocumentsUriUsingTree(parent, DocumentsContract.getDocumentId(parent))
             val cursor = resolver.query(childrenUri, null,
-                null, null, null, null) ?: return emptySequence()
+                null, null, null, null) ?: return emptyList()
 
-            return sequence {
-                cursor.use {cur ->
-                    while(cur.moveToNext()) {
-                        val docId = cur.getString(0)
-                        val uri = DocumentsContract.buildDocumentUriUsingTree(parent, docId)
-
-                        yield(fromCursor(cur, uri, resolver))
-                    }
+            /*
+              sequenceを使うと、途中で中断されるとcursor.useの終了処理が呼ばれずに
+              A resource failed to call CursorWindow.close.
+              というログが出るのでListにする。
+             */
+            return cursor.use { cur ->
+                val result = mutableListOf<FastFile>()
+                while(cur.moveToNext()) {
+                    val docId = cur.getString(0)
+                    val uri = DocumentsContract.buildDocumentUriUsingTree(parent, docId)
+                    result.add(fromCursor(cur, uri, resolver))
                 }
+                result
             }
         }
 
