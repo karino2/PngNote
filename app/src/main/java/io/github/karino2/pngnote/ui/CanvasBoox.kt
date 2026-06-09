@@ -17,8 +17,11 @@ import kotlin.math.abs
 
 
 class CanvasBoox(context: Context, var initialBmp: Bitmap? = null, private val background: Bitmap?, initialPageIdx:Int  = 0) : SurfaceView(context) {
-    var bitmap: Bitmap? = null
-    private var bmpCanvas: Canvas? = null
+    private val bitmapActor = BitmapActor()
+    val bitmap: Bitmap?
+        get() = bitmapActor.bitmap
+    val bmpCanvas: Canvas?
+        get() = bitmapActor.bmpCanvas
 
     private val pencilWidth = 3f
     private val eraserWidth = 30f
@@ -53,7 +56,7 @@ class CanvasBoox(context: Context, var initialBmp: Bitmap? = null, private val b
         if (undoCount != count) {
             undoCount = count
             BookActivity.bitmapLock.withLock {
-                undoList.undo(bmpCanvas!!)
+                bmpCanvas?.let { undoList.undo(it) }
             }
 
             refreshAfterUndoRedo()
@@ -64,7 +67,7 @@ class CanvasBoox(context: Context, var initialBmp: Bitmap? = null, private val b
         if(redoCount != count) {
             redoCount = count
             BookActivity.bitmapLock.withLock {
-                undoList.redo(bmpCanvas!!)
+                bmpCanvas?.let { undoList.redo(it) }
             }
 
             refreshAfterUndoRedo()
@@ -76,7 +79,7 @@ class CanvasBoox(context: Context, var initialBmp: Bitmap? = null, private val b
     }
 
     private fun refreshAfterUndoRedo() {
-        updateBmpListener(bitmap!!)
+        bitmap?.let { updateBmpListener(it) }
         notifyUndoStateChanged()
         refreshUI()
     }
@@ -316,13 +319,7 @@ class CanvasBoox(context: Context, var initialBmp: Bitmap? = null, private val b
 
 
     private fun ensureBitmap() :Pair<Bitmap, Canvas> {
-        if(bitmap == null) {
-            bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888).apply {
-                eraseColor(Color.WHITE)
-            }
-            bmpCanvas = Canvas(bitmap!!)
-        }
-        return Pair(bitmap!!, bmpCanvas!!)
+        return bitmapActor.ensureBitmap(width, height)
     }
 
     // use for short term temporary only.
