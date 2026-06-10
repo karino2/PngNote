@@ -3,7 +3,6 @@ package io.github.karino2.pngnote.ui
 import android.content.Context
 import android.graphics.*
 import android.graphics.Color
-import android.graphics.Color.WHITE
 import android.view.SurfaceHolder
 import android.view.SurfaceView
 import com.onyx.android.sdk.api.device.epd.EpdController
@@ -142,6 +141,12 @@ class CanvasBoox(context: Context, var initialBmp: Bitmap? = null, private val b
         }
     }
 
+    private val strokeWidth: Float
+        get() = if(isPencil) pencilWidth else eraserWidth
+
+    private val strokeColor: Int
+        get() = if(isPencil) Color.BLACK else Color.WHITE
+
     private fun applyRawDrawingSettings() {
         val limit = calcVisibleRect()
         if (!holder.surface.isValid || limit.width() <= 0 || limit.height() <= 0) return
@@ -152,8 +157,8 @@ class CanvasBoox(context: Context, var initialBmp: Bitmap? = null, private val b
 
         if (!touchHelper.isRawDrawingRenderEnabled) {
             clearSurfaceViewByBitmap(holder)
-            touchHelper.setStrokeWidth(pencilWidth)
-                .setStrokeColor(Color.BLACK)
+            touchHelper.setStrokeWidth(strokeWidth)
+                .setStrokeColor(strokeColor)
                 .setLimitRect(limit, emptyList<Rect>())
                 .setStrokeStyle(TouchHelper.STROKE_STYLE_PENCIL)
                 .openRawDrawing()
@@ -267,6 +272,7 @@ class CanvasBoox(context: Context, var initialBmp: Bitmap? = null, private val b
     fun onEnsureClose(count: Int) {
         if (count != ensureCloseCount) {
             ensureCloseRawRendering()
+            applyBackendToSurface()
 
             ensureCloseCount = count
         }
@@ -337,7 +343,7 @@ class CanvasBoox(context: Context, var initialBmp: Bitmap? = null, private val b
         withTempNoRawRendering {
             val (bmp, _) = bitmapBackend.ensureBitmap(this.width, this.height)
             this.holder.lockCanvas()?.let { lockCanvas ->
-                lockCanvas.drawColor(WHITE)
+                lockCanvas.drawColor(Color.WHITE)
                 val paint = this.background?.let<Bitmap, Paint> { bg ->
                     lockCanvas.drawBitmap(bg, 0f, 0f, bmpPaint)
                     bmpPaintWithBG

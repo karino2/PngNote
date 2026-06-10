@@ -181,13 +181,14 @@ class BookActivity : ComponentActivity() {
     }
 
     override fun onStop() {
-        ensureSave()
         closeCount.value = closeCount.value +1
+        ensureSave()
         super.onStop()
     }
 
 
     private fun share() {
+        closeCount.value = closeCount.value +1
         ensureSave()
         if (pageBmp == null) {
             return
@@ -357,6 +358,7 @@ class BookActivity : ComponentActivity() {
                         },
                         navigationIcon = {
                             IconButton(onClick = {
+                                closeCount.value = closeCount.value +1
                                 ensureSave()
                                 finish()
                             }) {
