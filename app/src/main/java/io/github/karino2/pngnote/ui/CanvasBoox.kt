@@ -285,6 +285,9 @@ class CanvasBoox(context: Context, var initialBmp: Bitmap? = null, private val b
 
     private fun drawPointsToBitmap(points: List<TouchPoint>) {
         val paint = if(isPencil) pathPaint else eraserPaint
+        // finish()後などにこの状態になるので無視
+        if (width == 0 || height == 0)
+            return
         bitmapBackend.drawOrErasePointsToBitmap(points, paint, width, height)
     }
 
