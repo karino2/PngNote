@@ -4,7 +4,6 @@ import android.graphics.*
 import com.onyx.android.sdk.data.note.TouchPoint
 import io.github.karino2.pngnote.BookActivity
 import java.util.Date
-import java.util.concurrent.Executors
 import kotlin.concurrent.withLock
 import kotlin.math.abs
 
@@ -15,7 +14,7 @@ class BitmapBackend {
     private val undoList = UndoList()
 
     val eraseAccPoints = ArrayList<TouchPoint>()
-    private var lastSave = 0L
+    private var lastErase = 0L
 
     private fun getCurrentMills() = (Date()).time
 
@@ -24,12 +23,12 @@ class BitmapBackend {
     }
 
     fun clearEraseAccPoints() {
-        lastSave = getCurrentMills()
+        lastErase = getCurrentMills()
         eraseAccPoints.clear()
     }
 
     val needEraseUpdate: Boolean
-        get() = eraseAccPoints.size >= 100 || (getCurrentMills() - lastSave) > 300L
+        get() = eraseAccPoints.size >= 100 || (getCurrentMills() - lastErase) > 300L
 
     var bitmap: Bitmap? = null
         private set

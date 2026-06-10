@@ -10,6 +10,8 @@ import com.onyx.android.sdk.data.note.TouchPoint
 import com.onyx.android.sdk.pen.RawInputCallback
 import com.onyx.android.sdk.pen.TouchHelper
 import com.onyx.android.sdk.pen.data.TouchPointList
+import java.util.Date
+import kotlin.math.abs
 
 
 class CanvasBoox(context: Context, var initialBmp: Bitmap? = null, private val background: Bitmap?, initialPageIdx:Int  = 0) : SurfaceView(context) {
@@ -61,28 +63,31 @@ class CanvasBoox(context: Context, var initialBmp: Bitmap? = null, private val b
     private fun refreshAfterUndoRedo() {
         bitmapBackend.notifyBitmapUpdate()
         bitmapBackend.notifyUndoStateChanged()
-        applyBackendToSurface()
+        syncBackendToSurface()
     }
 
     private var initCount = 0
 
     private val inputCallback : RawInputCallback = object: RawInputCallback() {
         override fun onBeginRawDrawing(p0: Boolean, p1: TouchPoint?) {
+            postponeDelaySync()
         }
 
         override fun onEndRawDrawing(p0: Boolean, p1: TouchPoint?) {
+            requestDelaySync()
         }
 
         override fun onRawDrawingTouchPointMoveReceived(p0: TouchPoint?) {
         }
 
         override fun onRawDrawingTouchPointListReceived(plist: TouchPointList) {
+            postponeDelaySync()
             drawPointsToBitmap(plist.points)
 
             // eraser tends to fail for update screen.
             // I don't know the reason. Just update every time eraser coming.
             if (isEraser)
-                applyBackendToSurface()
+                syncBackendToSurface()
         }
 
         override fun onBeginRawErasing(p0: Boolean, p1: TouchPoint?) {
@@ -93,7 +98,7 @@ class CanvasBoox(context: Context, var initialBmp: Bitmap? = null, private val b
         }
 
         override fun onEndRawErasing(p0: Boolean, p1: TouchPoint?) {
-            applyBackendToSurface()
+            syncBackendToSurface()
         }
 
         override fun onRawErasingTouchPointMoveReceived(p0: TouchPoint?) {
@@ -250,7 +255,7 @@ class CanvasBoox(context: Context, var initialBmp: Bitmap? = null, private val b
 
     fun onRestart(count: Int) {
         if (count != restartCount) {
-            applyBackendToSurface()
+            syncBackendToSurface()
             applyRawDrawingSettings()
 
             restartCount = count
@@ -272,7 +277,7 @@ class CanvasBoox(context: Context, var initialBmp: Bitmap? = null, private val b
     fun onEnsureClose(count: Int) {
         if (count != ensureCloseCount) {
             ensureCloseRawRendering()
-            applyBackendToSurface()
+            syncBackendToSurface()
 
             ensureCloseCount = count
         }
@@ -297,7 +302,7 @@ class CanvasBoox(context: Context, var initialBmp: Bitmap? = null, private val b
             .setStrokeStyle(TouchHelper.STROKE_STYLE_PENCIL)
             .setStrokeColor(Color.BLACK)
 
-        applyBackendToSurface()
+        syncBackendToSurface()
     }
 
     private fun eraser() {
@@ -310,14 +315,14 @@ class CanvasBoox(context: Context, var initialBmp: Bitmap? = null, private val b
             .setStrokeStyle(TouchHelper.STROKE_STYLE_PENCIL)
             .setStrokeColor(Color.WHITE)
 
-        applyBackendToSurface()
+        syncBackendToSurface()
     }
 
 
     private var refreshCount = 0
     fun refreshUI(count: Int) {
         if(refreshCount != count) {
-            applyBackendToSurface()
+            syncBackendToSurface()
             refreshCount = count
         }
     }
@@ -337,9 +342,46 @@ class CanvasBoox(context: Context, var initialBmp: Bitmap? = null, private val b
         }
     }
 
+    // 暇な時にSurfaceViewを書き直す。
+    private var lastSync = 0L
+    private var lastRequest = 0L
+    private val delayInterval = 300L
+
+    private fun getCurrentMills() = (Date()).time
+
+    private fun requestDelaySync() {
+        lastRequest = getCurrentMills()
+        postDelayed({ maySyncBack() }, delayInterval)
+    }
+
+    private fun postponeDelaySync() {
+        lastRequest = getCurrentMills()
+    }
 
 
-    private fun applyBackendToSurface() {
+    private fun maySyncBack() {
+        if (lastSync > lastRequest)
+            return
+
+        // 十分最近syncされてる。
+        if( abs(lastSync - lastRequest) < 100L) {
+            requestDelaySync()
+            return
+        }
+        if (getCurrentMills()-lastRequest < (delayInterval-100L)) {
+            // postponed, retry.
+            requestDelaySync()
+            return
+        }
+        // onStopとかの変なタイミングを排除すべく、そもそもrawDrawingじゃなければ何もしない。
+        if (!touchHelper.isRawDrawingRenderEnabled)
+            return
+        syncBackendToSurface()
+    }
+
+    private fun syncBackendToSurface() {
+        lastSync = getCurrentMills()
+
         withTempNoRawRendering {
             val (bmp, _) = bitmapBackend.ensureBitmap(this.width, this.height)
             this.holder.lockCanvas()?.let { lockCanvas ->
@@ -374,7 +416,7 @@ class CanvasBoox(context: Context, var initialBmp: Bitmap? = null, private val b
         val newbmp = bitmapLoader(idx)
         bitmapBackend.setupNewPage(width, height, newbmp)
 
-        applyBackendToSurface()
+        syncBackendToSurface()
     }
 
     private fun cleanSurfaceView(): Boolean {
