@@ -348,7 +348,8 @@ class CanvasBoox(context: Context, var initialBmp: Bitmap? = null, private val b
     // 暇な時にSurfaceViewを書き直す。
     private var lastSync = 0L
     private var lastRequest = 0L
-    private val delayInterval = 300L
+    private var lastPostponed = 0L
+    private val delayInterval = 500L
 
     private fun getCurrentMills() = (Date()).time
 
@@ -358,27 +359,32 @@ class CanvasBoox(context: Context, var initialBmp: Bitmap? = null, private val b
     }
 
     private fun postponeDelaySync() {
-        lastRequest = getCurrentMills()
+        lastPostponed = getCurrentMills()
     }
 
 
     private fun maySyncBack() {
+        // println("delay sync0")
         if (lastSync > lastRequest)
             return
 
         // 十分最近syncされてる。
         if( abs(lastSync - lastRequest) < 100L) {
+            // println("delay sync1")
             requestDelaySync()
             return
         }
-        if (getCurrentMills()-lastRequest < (delayInterval-100L)) {
+        if (getCurrentMills()-lastPostponed < (delayInterval-100L)) {
+            // println("delay sync2")
             // postponed, retry.
             requestDelaySync()
             return
         }
+        // println("delay sync3")
         // onStopとかの変なタイミングを排除すべく、そもそもrawDrawingじゃなければ何もしない。
         if (!touchHelper.isRawDrawingRenderEnabled)
             return
+        // println("delay sync4")
         syncBackendToSurface()
     }
 
