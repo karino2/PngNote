@@ -413,5 +413,8 @@ class CanvasBoox(context: Context, var initialBmp: Bitmap? = null, private val b
         bitmapBackend.undoStateListener = undoStateListener
     }
 
+    fun onFinish() {
+        ensureCloseRawRendering()
+    }
 
 }

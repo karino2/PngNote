@@ -263,6 +263,8 @@ class BookActivity : ComponentActivity() {
         }
     }
 
+    var finishListener : ()->Unit = {}
+
     override fun onNewIntent(intent: Intent?) {
         super.onNewIntent(intent)
         intent?.let {
@@ -358,7 +360,7 @@ class BookActivity : ComponentActivity() {
                         },
                         navigationIcon = {
                             IconButton(onClick = {
-                                closeCount.value = closeCount.value +1
+                                finishListener()
                                 ensureSave()
                                 finish()
                             }) {
@@ -376,6 +378,7 @@ class BookActivity : ComponentActivity() {
                                         firstInit()
                                         setOnUpdateListener { notifyBitmapUpdate(it) }
                                         setOnUndoStateListener { undo, redo-> notifyUndoStateChanged(undo, redo) }
+                                        finishListener = { onFinish() }
                                     }
                                 },
                                 update = {
