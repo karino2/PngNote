@@ -349,7 +349,7 @@ class CanvasBoox(context: Context, var initialBmp: Bitmap? = null, private val b
     private var lastSync = 0L
     private var lastRequest = 0L
     private var lastPostponed = 0L
-    private val delayInterval = 500L
+    private val delayInterval = 2000L
 
     private fun getCurrentMills() = (Date()).time
 
