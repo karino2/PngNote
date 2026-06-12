@@ -216,7 +216,7 @@ fun NewBookPopup(onNewBook : (bookName: String)->Unit, onDismiss: ()->Unit) {
                     onNewBook(textState)
                 }
             }) {
-                Text("CREATE")
+                Text("OK")
             }
         },
         dismissButton = {
