@@ -1,0 +1,43 @@
+name: Build and Release APK
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up JDK
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+        cache: gradle
+    
+    - name: Decode keystore
+      run: |
+          echo "${{ secrets.SIGNING_KEY }}" | base64 -d > ${{ github.workspace }}/release-key.jks
+
+    - name: Build release APK
+      env:
+        STORE_PASSWORD: ${{ secrets.SIGNING_STORE_PASSWORD }}
+        SIGNING_PASSWORD: ${{ secrets.SIGNING_KEY_PASSWORD }}
+      run: |
+        chmod +x ./gradlew
+        ./gradlew assembleRelease \
+          -Pandroid.injected.signing.store.file=${{ github.workspace }}/release-key.jks \
+          "-Pandroid.injected.signing.store.password=$STORE_PASSWORD" \
+          -Pandroid.injected.signing.key.alias=${{ secrets.SIGNING_KEY_ALIAS }} \
+          "-Pandroid.injected.signing.key.password=$SIGNING_PASSWORD"
+    
+    - name: Upload to Release
+      uses: softprops/action-gh-release@v1
+      with:
+        files: app/build/outputs/apk/release/*.apk
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
