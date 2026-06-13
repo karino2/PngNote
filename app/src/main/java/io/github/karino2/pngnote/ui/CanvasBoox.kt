@@ -295,6 +295,7 @@ class CanvasBoox(context: Context, var initialBmp: Bitmap? = null, private val b
     private val isEraser : Boolean
         get() = !isPencil
 
+    private var shiftHalf = false
 
     private fun pencil() {
         if (isPencil)
@@ -416,13 +417,14 @@ class CanvasBoox(context: Context, var initialBmp: Bitmap? = null, private val b
     }
 
     private var pageIdx = initialPageIdx
-    fun onPageIdx(idx: Int, bitmapLoader: (Int)->Bitmap?) {
-        if(pageIdx == idx)
+    fun onPageIdx(idx: Int, shiftHalf:Boolean, bitmapLoader: (Int, Boolean)->Bitmap?) {
+        if(pageIdx == idx && shiftHalf == this.shiftHalf)
             return
 
         pageIdx = idx
+        this.shiftHalf = shiftHalf
 
-        val newbmp = bitmapLoader(idx)
+        val newbmp = bitmapLoader(idx, shiftHalf)
         bitmapBackend.setupNewPage(width, height, newbmp)
 
         syncBackendToSurface()

@@ -42,6 +42,12 @@ class PageGridActivity: ComponentActivity() {
 
     private val bookIO by lazy { BookIO(contentResolver) }
 
+    private val bitmapIO : BitmapIO
+        get() = bookIO.bitmapIO
+
+    private val pageIO: BookPageIO
+        get() = bookIO.pageIO
+
     private var _book : Book? = null
 
     private val book : Book
@@ -53,7 +59,7 @@ class PageGridActivity: ComponentActivity() {
             }
         }
 
-    private val bgImage by lazy { bookIO.loadBgForGrid(book.bookDir) }
+    private val bgImage by lazy { bookIO.loadBgForGrid(book) }
     private val pageList by lazy {
         mutableStateOf(book.pages.mapIndexed { idx, _ ->
             Page(
@@ -74,7 +80,7 @@ class PageGridActivity: ComponentActivity() {
     private fun requestLoadPages() {
         lifecycleScope.launch(Dispatchers.IO) {
             book.pages.forEachIndexed { idx, bmpfile ->
-                val bitmap = bookIO.loadPageThumbnail(bmpfile)
+                val bitmap = pageIO.loadPageThumbnail(bmpfile)
                 withContext(Dispatchers.Main) {
                     pageList.value = pageList.value.mapIndexed {idx2, page -> if(idx==idx2) page.copy(thumbnail = bitmap) else page }
                 }

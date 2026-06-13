@@ -1,0 +1,25 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <!-- 左右のページの縁（太さを2に増やして視認性を向上） -->
+    <path
+        android:fillColor="#FF000000"
+        android:pathData="M4,0h2v24h-2z M18,0h2v24h-2z" />
+
+    <!-- 中央のページ境界線（左右の枠線に繋がるように幅を調整） -->
+    <path
+        android:fillColor="#FF000000"
+        android:pathData="M4,11h16v2h-16z" />
+
+    <!-- 1ページ目の末尾（上側）のコンテンツ行 -->
+    <path
+        android:fillColor="#FF000000"
+        android:pathData="M8,2h8v1h-8z M8,5h8v1h-8z M8,8h8v1h-8z" />
+
+    <!-- 2ページ目の冒頭（下側）のコンテンツ行 -->
+    <path
+        android:fillColor="#FF000000"
+        android:pathData="M8,15h8v1h-8z M8,18h8v1h-8z M8,21h8v1h-8z" />
+</vector>
