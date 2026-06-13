@@ -389,6 +389,9 @@ class CanvasBoox(context: Context, var initialBmp: Bitmap? = null, private val b
         syncBackendToSurface()
     }
 
+    private val borderPaint = Paint().apply { color = Color.LTGRAY }
+
+
     private fun syncBackendToSurface() {
         lastSync = getCurrentMills()
 
@@ -401,6 +404,12 @@ class CanvasBoox(context: Context, var initialBmp: Bitmap? = null, private val b
                     bmpPaintWithBG
                 } ?: bmpPaint
                 lockCanvas.drawBitmap(bmp, 0f, 0f, paint)
+                if(shiftHalf) {
+                    // 真ん中-2pxから2pxの太さのボーダーラインをborderPaintで描く
+                    lockCanvas.drawRect(
+                        0f, (height / 2 - 2).toFloat(), width.toFloat(), (height / 2 + 2).toFloat(), borderPaint
+                    )
+                }
                 this.holder.unlockCanvasAndPost(lockCanvas)
             }
         }

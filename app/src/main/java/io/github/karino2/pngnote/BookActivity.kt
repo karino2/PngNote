@@ -70,7 +70,7 @@ class BookActivity : ComponentActivity() {
     private var _book : Book? = null
     set(newbook) {
         field = newbook
-        pageNum.value = newbook?.pages?.size ?: 0
+        pageNum.value = newbook?.pageNum ?: 0
     }
 
     private val book : Book
@@ -267,11 +267,6 @@ class BookActivity : ComponentActivity() {
         }
     }
 
-    private fun shiftHalfPage() {
-        // TODO: Implement shift half page
-        showMessage("Shift half page")
-    }
-
     var finishListener : ()->Unit = {}
 
     override fun onNewIntent(intent: Intent?) {
@@ -339,8 +334,8 @@ class BookActivity : ComponentActivity() {
                             }
                             Row(modifier=Modifier.weight(6f), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.End) {
                                 IconToggleButton(checked = shiftHalf.value, onCheckedChange= {
+                                    ensureSave()
                                     shiftHalf.value = it
-                                    shiftHalfPage()
                                 }) {
                                     val iconId = if (shiftHalf.value) R.drawable.baseline_shift_half else R.drawable.outline_shift_half
                                     Icon(
