@@ -1,0 +1,20 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <!-- 内部：ごく薄いグレー -->
+    <path
+        android:fillColor="#FFF5F5F5"
+        android:pathData="M5,0h13v24h-13z" />
+
+    <!-- 左右の縁：薄いグレー -->
+    <path
+        android:fillColor="#FFCCCCCC"
+        android:pathData="M5,0h1v24h-1z M18,0h1v24h-1z" />
+
+    <!-- 中央の境界線：薄いグレー -->
+    <path
+        android:fillColor="#FFCCCCCC"
+        android:pathData="M5,11.5h14v1h-14z" />
+</vector>
