@@ -233,7 +233,8 @@ class BookActivity : ComponentActivity() {
 
 
         emptyBmp?.let {ebmp ->
-            savePageInMain(pageNum.value - 1, shiftHalf.value, ebmp)
+            // create empty page as last page, in this case, shift is always false regardless of UI state.
+            savePageInMain(pageNum.value - 1, false, ebmp)
         }
         pageIdxValue.value = pageNum.value-1
     }
