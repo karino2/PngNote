@@ -11,6 +11,7 @@ import android.graphics.Rect
 import android.widget.Toast
 import androidx.core.graphics.createBitmap
 import io.github.karino2.fastfile.FastFile
+import androidx.core.content.edit
 
 
 class BookList(val dir: FastFile, val resolver: ContentResolver) {
@@ -18,15 +19,15 @@ class BookList(val dir: FastFile, val resolver: ContentResolver) {
         private const val LAST_ROOT_DIR_KEY = "last_root_url"
 
         fun lastUriStr(ctx: Context) = sharedPreferences(ctx).getString(LAST_ROOT_DIR_KEY, null)
-        fun writeLastUriStr(ctx: Context, path : String) = sharedPreferences(ctx).edit()
-            .putString(LAST_ROOT_DIR_KEY, path)
-            .commit()
+        fun writeLastUriStr(ctx: Context, path : String) = sharedPreferences(ctx).edit(commit = true) {
+            putString(LAST_ROOT_DIR_KEY, path)
+        }
 
-        fun resetLastUriStr(ctx: Context) = sharedPreferences(ctx).edit()
-            .putString(LAST_ROOT_DIR_KEY, null)
-            .commit()
+        fun resetLastUriStr(ctx: Context) = sharedPreferences(ctx).edit(commit = true) {
+            putString(LAST_ROOT_DIR_KEY, null)
+        }
 
-        private fun sharedPreferences(ctx: Context) = ctx.getSharedPreferences("KAKIOKU", Context.MODE_PRIVATE)
+        private fun sharedPreferences(ctx: Context) = ctx.getSharedPreferences("PngNote", Context.MODE_PRIVATE)
 
         fun showMessage(ctx: Context, msg : String) = Toast.makeText(ctx, msg, Toast.LENGTH_SHORT).show()
     }
