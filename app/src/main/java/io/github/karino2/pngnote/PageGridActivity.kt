@@ -14,6 +14,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.lifecycleScope
+import io.github.karino2.fastfile.FastFile
 import io.github.karino2.pngnote.ui.Page
 import io.github.karino2.pngnote.ui.PageGrid
 import io.github.karino2.pngnote.ui.PageGridData

@@ -26,6 +26,7 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.lifecycleScope
+import io.github.karino2.fastfile.FastFile
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
