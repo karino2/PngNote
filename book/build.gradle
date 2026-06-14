@@ -1,0 +1,31 @@
+plugins {
+    id 'com.android.library'
+    id 'com.android.built-in-kotlin'
+}
+
+android {
+    namespace 'io.github.karino2.pngnote.book'
+    compileSdk {
+        version = release(34)
+    }
+
+    defaultConfig {
+        minSdk 26
+
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_11
+        targetCompatibility JavaVersion.VERSION_11
+    }
+
+}
+
+dependencies {
+    implementation 'androidx.appcompat:appcompat:1.6.1'
+    implementation 'androidx.core:core-ktx:1.10.1'
+    implementation 'com.google.android.material:material:1.9.0'
+    testImplementation 'junit:junit:4.13.2'
+    androidTestImplementation 'androidx.test.espresso:espresso-core:3.7.0'
+    androidTestImplementation 'androidx.test.ext:junit:1.3.0'
+}
