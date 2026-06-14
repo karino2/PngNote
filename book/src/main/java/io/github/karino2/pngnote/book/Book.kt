@@ -1,4 +1,4 @@
-package io.github.karino2.pngnote
+package io.github.karino2.pngnote.book
 
 import android.content.ContentResolver
 import android.content.Context
@@ -9,10 +9,10 @@ import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.Rect
 import android.widget.Toast
+import androidx.core.content.edit
 import androidx.core.graphics.createBitmap
 import io.github.karino2.fastfile.FastFile
-import androidx.core.content.edit
-
+import kotlin.collections.plus
 
 class BookList(val dir: FastFile, val resolver: ContentResolver) {
     companion object {
@@ -86,7 +86,7 @@ class BitmapIO(private val resolver: ContentResolver) {
         }
     }
 
-    fun loadBitmapThumbnail(file: FastFile, sampleSize: Int) :Bitmap {
+    fun loadBitmapThumbnail(file: FastFile, sampleSize: Int) : Bitmap {
         return resolver.openFileDescriptor(file.uri, "r").use {
             val option = BitmapFactory.Options().apply { inSampleSize = sampleSize }
             BitmapFactory.decodeFileDescriptor(it!!.fileDescriptor, null, option)
