@@ -82,6 +82,10 @@ class BitmapBackend {
         val (targetBmp, canvas) = ensureBitmap(width, height)
         // undo-redo push and draw.
         val region = pathBound(path, width, height)
+
+        if (region.height() <= 0 || region.width() <= 0)
+            return
+
         val (undo, redo) = BookActivity.bitmapLock.withLock {
             val undo = Bitmap.createBitmap(
                 targetBmp,
