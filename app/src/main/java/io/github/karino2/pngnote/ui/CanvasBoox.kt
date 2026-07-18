@@ -13,6 +13,30 @@ import com.onyx.android.sdk.pen.data.TouchPointList
 import java.util.Date
 import kotlin.math.abs
 
+class DrawingState {
+    var drawing = false
+    var lastDrawing = 0L
+    var id = 0
+
+    fun startDrawing() {
+        id += 1
+        drawing = true
+        lastDrawing = System.currentTimeMillis()
+    }
+
+    fun endDrawing() {
+        drawing = false
+    }
+
+    val isDrawing : Boolean
+        get() {
+            return drawing && (System.currentTimeMillis() - lastDrawing) < 10000
+        }
+
+    fun sameId(id1: Int) = id == id1
+
+}
+
 
 class CanvasBoox(context: Context, var initialBmp: Bitmap? = null, private val background: Bitmap?, initialPageIdx:Int  = 0) : SurfaceView(context) {
     private val bitmapBackend = BitmapBackend()
@@ -44,6 +68,8 @@ class CanvasBoox(context: Context, var initialBmp: Bitmap? = null, private val b
     private var undoCount = 0
     private var redoCount = 0
 
+    private val drawingState = DrawingState()
+
     fun undo(count : Int) {
         if (undoCount != count) {
             undoCount = count
@@ -70,6 +96,7 @@ class CanvasBoox(context: Context, var initialBmp: Bitmap? = null, private val b
 
     private val inputCallback : RawInputCallback = object: RawInputCallback() {
         override fun onBeginRawDrawing(p0: Boolean, p1: TouchPoint?) {
+            drawingState.startDrawing()
             postponeDelaySync()
         }
 
@@ -81,6 +108,7 @@ class CanvasBoox(context: Context, var initialBmp: Bitmap? = null, private val b
         }
 
         override fun onRawDrawingTouchPointListReceived(plist: TouchPointList) {
+            drawingState.endDrawing()
             postponeDelaySync()
             drawPointsToBitmap(plist.points)
 
@@ -393,22 +421,30 @@ class CanvasBoox(context: Context, var initialBmp: Bitmap? = null, private val b
 
 
     private fun syncBackendToSurface() {
+        // rawrenderingの最中。bmpは画面より古いのでこれで更新はしない。
+        if(drawingState.isDrawing)
+            return
+
         lastSync = getCurrentMills()
+        val beforeId = drawingState.id
 
         withTempNoRawRendering {
             val (bmp, _) = bitmapBackend.ensureBitmap(this.width, this.height)
             this.holder.lockCanvas()?.let { lockCanvas ->
-                lockCanvas.drawColor(Color.WHITE)
-                val paint = this.background?.let<Bitmap, Paint> { bg ->
-                    lockCanvas.drawBitmap(bg, 0f, 0f, bmpPaint)
-                    bmpPaintWithBG
-                } ?: bmpPaint
-                lockCanvas.drawBitmap(bmp, 0f, 0f, paint)
-                if(shiftHalf) {
-                    // 真ん中-2pxから2pxの太さのボーダーラインをborderPaintで描く
-                    lockCanvas.drawRect(
-                        0f, (height / 2 - 2).toFloat(), width.toFloat(), (height / 2 + 2).toFloat(), borderPaint
-                    )
+                if (drawingState.sameId(beforeId))
+                {
+                    lockCanvas.drawColor(Color.WHITE)
+                    val paint = this.background?.let<Bitmap, Paint> { bg ->
+                        lockCanvas.drawBitmap(bg, 0f, 0f, bmpPaint)
+                        bmpPaintWithBG
+                    } ?: bmpPaint
+                    lockCanvas.drawBitmap(bmp, 0f, 0f, paint)
+                    if(shiftHalf) {
+                        // 真ん中-2pxから2pxの太さのボーダーラインをborderPaintで描く
+                        lockCanvas.drawRect(
+                            0f, (height / 2 - 2).toFloat(), width.toFloat(), (height / 2 + 2).toFloat(), borderPaint
+                        )
+                    }
                 }
                 this.holder.unlockCanvasAndPost(lockCanvas)
             }
