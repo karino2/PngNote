@@ -137,7 +137,9 @@ class BookActivity : ComponentActivity() {
 
     // same as savePage, but blocking in Main thread.
     private fun savePageInMain(pageIdx: Int, shift: Boolean, pageBmp: Bitmap) {
-        bookIO.saveBitmap(book, pageIdx, shift, pageBmp)
+        bitmapLock.withLock {
+            bookIO.saveBitmap(book, pageIdx, shift, pageBmp)
+        }
         _book = book.assignNonEmpty(pageIdx)
     }
 
@@ -147,11 +149,13 @@ class BookActivity : ComponentActivity() {
             delay(SAVE_INTERVAL_MILL)
             if (isDirty && (getCurrentMills()- lastWritten) >= SAVE_INTERVAL_MILL) {
                 isDirty = false
-                val tmpBmp = BookActivity.bitmapLock.withLock {
-                    val bmp = pageBmp!!
-                    bmp.copy(bmp.config, false)
+                val (pageIdx, shalf, tmpBmp) = withContext(Dispatchers.Main) {
+                    bitmapLock.withLock {
+                        val bmp = pageBmp!!
+                        Triple(pageIdxValue.value, shiftHalf.value, bmp.copy(bmp.config, false))
+                    }
                 }
-                savePage(pageIdxValue.value, shiftHalf.value, tmpBmp)
+                savePage(pageIdx, shalf, tmpBmp)
             }
         }
     }
@@ -199,7 +203,9 @@ class BookActivity : ComponentActivity() {
         }
         val path = File.createTempFile("share", ".png", cacheDir)
         path.outputStream().use {
-            pageBmp!!.compress(Bitmap.CompressFormat.PNG, 100, it)
+            bitmapLock.withLock {
+                pageBmp!!.compress(Bitmap.CompressFormat.PNG, 100, it)
+            }
             it.flush()
         }
         val u = FileProvider.getUriForFile(this, applicationContext.packageName+".provider", path)
