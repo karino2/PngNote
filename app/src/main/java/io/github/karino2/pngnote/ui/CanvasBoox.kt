@@ -97,11 +97,9 @@ class CanvasBoox(context: Context, var initialBmp: Bitmap? = null, private val b
     private val inputCallback : RawInputCallback = object: RawInputCallback() {
         override fun onBeginRawDrawing(p0: Boolean, p1: TouchPoint?) {
             drawingState.startDrawing()
-            postponeDelaySync()
         }
 
         override fun onEndRawDrawing(p0: Boolean, p1: TouchPoint?) {
-            requestDelaySync()
         }
 
         override fun onRawDrawingTouchPointMoveReceived(p0: TouchPoint?) {
@@ -109,7 +107,6 @@ class CanvasBoox(context: Context, var initialBmp: Bitmap? = null, private val b
 
         override fun onRawDrawingTouchPointListReceived(plist: TouchPointList) {
             drawingState.endDrawing()
-            postponeDelaySync()
             drawPointsToBitmap(plist.points)
 
             // eraser tends to fail for update screen.
@@ -377,7 +374,6 @@ class CanvasBoox(context: Context, var initialBmp: Bitmap? = null, private val b
     // 暇な時にSurfaceViewを書き直す。
     private var lastSync = 0L
     private var lastRequest = 0L
-    private var lastPostponed = 0L
     private val delayInterval = 2000L
 
     private fun getCurrentMills() = (Date()).time
@@ -387,11 +383,6 @@ class CanvasBoox(context: Context, var initialBmp: Bitmap? = null, private val b
         postDelayed({ maySyncBack() }, delayInterval)
     }
 
-    private fun postponeDelaySync() {
-        lastPostponed = getCurrentMills()
-    }
-
-
     private fun maySyncBack() {
         // println("delay sync0")
         if (lastSync > lastRequest)
@@ -400,12 +391,6 @@ class CanvasBoox(context: Context, var initialBmp: Bitmap? = null, private val b
         // 十分最近syncされてる。
         if( abs(lastSync - lastRequest) < 100L) {
             // println("delay sync1")
-            requestDelaySync()
-            return
-        }
-        if (getCurrentMills()-lastPostponed < (delayInterval-100L)) {
-            // println("delay sync2")
-            // postponed, retry.
             requestDelaySync()
             return
         }
@@ -422,8 +407,10 @@ class CanvasBoox(context: Context, var initialBmp: Bitmap? = null, private val b
 
     private fun syncBackendToSurface() {
         // rawrenderingの最中。bmpは画面より古いのでこれで更新はしない。
-        if(drawingState.isDrawing)
+        if(drawingState.isDrawing) {
+            requestDelaySync()
             return
+        }
 
         lastSync = getCurrentMills()
         val beforeId = drawingState.id
