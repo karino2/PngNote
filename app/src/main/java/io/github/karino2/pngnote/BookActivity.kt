@@ -55,6 +55,7 @@ import kotlinx.coroutines.withContext
 import java.io.File
 import java.util.Date
 import kotlin.concurrent.withLock
+import kotlin.time.Duration.Companion.milliseconds
 
 
 class BookActivity : ComponentActivity() {
@@ -146,16 +147,21 @@ class BookActivity : ComponentActivity() {
     private val SAVE_INTERVAL_MILL = 5000L
     private fun lazySave() {
         lifecycleScope.launch(Dispatchers.IO) {
-            delay(SAVE_INTERVAL_MILL)
+            delay(SAVE_INTERVAL_MILL.milliseconds)
             if (isDirty && (getCurrentMills()- lastWritten) >= SAVE_INTERVAL_MILL) {
-                isDirty = false
                 val (pageIdx, shalf, tmpBmp) = withContext(Dispatchers.Main) {
+                    // main threadで同じタイミングで保存した人がいれば無視。
+                    if (!isDirty)
+                        return@withContext Triple(-1, false, pageBmp!!)
+
+                    isDirty = false
                     bitmapLock.withLock {
                         val bmp = pageBmp!!
                         Triple(pageIdxValue.value, shiftHalf.value, bmp.copy(bmp.config, false))
                     }
                 }
-                savePage(pageIdx, shalf, tmpBmp)
+                if (pageIdx != -1)
+                    savePage(pageIdx, shalf, tmpBmp)
             }
         }
     }

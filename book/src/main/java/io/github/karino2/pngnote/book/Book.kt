@@ -243,12 +243,16 @@ class BookIO(resolver: ContentResolver) {
         return betweenPageIO.loadBitmapBetween(book, pageIdx)
     }
 
+    private val saveLock = Any()
+
     fun saveBitmap(book: Book, pageIdx: Int, shiftHalf:Boolean, bitmap: Bitmap) {
-        if (!shiftHalf) {
-            pageIO.saveBitmap(book.getPage(pageIdx), bitmap)
-            return
+        synchronized(saveLock) {
+            if (!shiftHalf) {
+                pageIO.saveBitmap(book.getPage(pageIdx), bitmap)
+                return
+            }
+            betweenPageIO.saveBitmapBetween(book, pageIdx, bitmap)
         }
-        betweenPageIO.saveBitmapBetween(book, pageIdx, bitmap)
     }
 
 
