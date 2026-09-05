@@ -4,6 +4,7 @@ import android.content.Context
 import android.graphics.*
 import android.view.MotionEvent
 import android.view.View
+import io.github.karino2.pngnote.book.PageInfo
 
 
 class CanvasBoox(context: Context, var initialBmp: Bitmap? = null, private val background: Bitmap?, initialPageIdx:Int  = 0) : View(context) {
@@ -155,14 +156,14 @@ class CanvasBoox(context: Context, var initialBmp: Bitmap? = null, private val b
     }
 
     private var pageIdx = initialPageIdx
-    fun onPageIdx(idx: Int, shiftHalf:Boolean, bitmapLoader: (Int, Boolean)->Bitmap?) {
-        if(pageIdx == idx && shiftHalf == this.shiftHalf)
+    fun onPageIdx(pageInfo: PageInfo, bitmapLoader: (PageInfo)->Bitmap?) {
+        if(pageIdx == pageInfo.idx && pageInfo.shift == this.shiftHalf)
             return
 
-        pageIdx = idx
-        this.shiftHalf = shiftHalf
+        pageIdx = pageInfo.idx
+        this.shiftHalf = pageInfo.shift
 
-        val newbmp = bitmapLoader(idx, shiftHalf)
+        val newbmp = bitmapLoader(pageInfo)
         bitmapBackend.setupNewPage(width, height, newbmp)
 
         invalidate()

@@ -46,6 +46,7 @@ import androidx.lifecycle.lifecycleScope
 import io.github.karino2.fastfile.FastFile
 import io.github.karino2.pngnote.book.Book
 import io.github.karino2.pngnote.book.BookIO
+import io.github.karino2.pngnote.book.PageInfo
 import io.github.karino2.pngnote.ui.CanvasBoox
 import io.github.karino2.pngnote.ui.theme.PngNoteTheme
 import kotlinx.coroutines.Dispatchers
@@ -90,8 +91,11 @@ class BookActivity : ComponentActivity() {
 
 
     private val initCount = mutableStateOf(0)
-    private val shiftHalf = mutableStateOf(false)
-    private val pageIdxValue = mutableStateOf(initialPageIdx)
+
+    private val pageInfoState = mutableStateOf(PageInfo(initialPageIdx, false))
+
+    private var pageBmp: Bitmap? = null
+
     private val pageNum = mutableStateOf(0)
     private val restartCount = mutableStateOf(0)
     private val closeCount = mutableStateOf(0)
@@ -104,13 +108,17 @@ class BookActivity : ComponentActivity() {
     private var lastWritten = -1L
     private var emptyBmp: Bitmap? = null
 
-    private var pageBmp: Bitmap? = null
+
     private var isDirty = false
+
+    private var lastUpdatedPageInfo = pageInfoState.value.copy()
+
     private fun notifyBitmapUpdate(newBmp : Bitmap) {
         isDirty = true
         lastWritten = getCurrentMills()
 
         bitmapLock.withLock {
+            lastUpdatedPageInfo = pageInfoState.value.copy()
             pageBmp = newBmp
         }
         lazySave()
@@ -131,14 +139,18 @@ class BookActivity : ComponentActivity() {
 
     private fun getCurrentMills() = (Date()).time
 
-    private suspend fun savePage(pageIdx: Int, shift: Boolean, pageBmp: Bitmap) {
-        bookIO.saveBitmap(book, pageIdx, shift, pageBmp)
+    private suspend fun savePageData(pageInfo: PageInfo, pageBmp: Bitmap?) {
+        bookIO.saveBitmap(book, pageInfo.idx, pageInfo.shift, pageBmp!!)
         withContext(Dispatchers.Main) {
-            _book = book.assignNonEmpty(pageIdx)
+            _book = book.assignNonEmpty(pageInfo.idx)
         }
     }
 
     // same as savePage, but blocking in Main thread.
+    private fun savePageDataInMain(pageInfo: PageInfo, pageBmp: Bitmap?) {
+        savePageInMain(pageInfo.idx, pageInfo.shift, pageBmp!!)
+    }
+
     private fun savePageInMain(pageIdx: Int, shift: Boolean, pageBmp: Bitmap) {
         bitmapLock.withLock {
             bookIO.saveBitmap(book, pageIdx, shift, pageBmp)
@@ -151,19 +163,19 @@ class BookActivity : ComponentActivity() {
         lifecycleScope.launch(Dispatchers.IO) {
             delay(SAVE_INTERVAL_MILL.milliseconds)
             if (isDirty && (getCurrentMills()- lastWritten) >= SAVE_INTERVAL_MILL) {
-                val (pageIdx, shalf, tmpBmp) = withContext(Dispatchers.Main) {
-                    // main threadで同じタイミングで保存した人がいれば無視。
-                    if (!isDirty)
-                        return@withContext Triple(-1, false, pageBmp!!)
+                val (pinfoSnapshot, bmpSnapshot) = withContext(Dispatchers.Main) {
+                    // main threadで同じタイミングで保存した人がいるか、pageIdxやshiftが新しくなっていたら最後のupdateは無視
+                    if (!isDirty || lastUpdatedPageInfo != pageInfoState.value)
+                        return@withContext Pair(PageInfo(-1, false), null)
 
                     isDirty = false
                     bitmapLock.withLock {
                         val bmp = pageBmp!!
-                        Triple(pageIdxValue.value, shiftHalf.value, bmp.copy(bmp.config, false))
+                        Pair(lastUpdatedPageInfo, bmp.copy(bmp.config, false))
                     }
                 }
-                if (pageIdx != -1)
-                    savePage(pageIdx, shalf, tmpBmp)
+                if (pinfoSnapshot.idx != -1)
+                    savePageData(pinfoSnapshot, bmpSnapshot)
             }
         }
     }
@@ -172,7 +184,7 @@ class BookActivity : ComponentActivity() {
     private fun ensureSave() {
         if (isDirty) {
             isDirty = false
-            savePageInMain(pageIdxValue.value, shiftHalf.value, pageBmp!!)
+            savePageDataInMain(pageInfoState.value, pageBmp)
         }
     }
 
@@ -197,13 +209,14 @@ class BookActivity : ComponentActivity() {
     }
 
     override fun onStop() {
+        closeCount.value += 1
         ensureSave()
-        closeCount.value = closeCount.value +1
         super.onStop()
     }
 
 
     private fun share() {
+        closeCount.value += 1
         ensureSave()
         if (pageBmp == null) {
             return
@@ -245,36 +258,38 @@ class BookActivity : ComponentActivity() {
         _book = book.addPage()
 
 
+        val newPageIdx = pageNum.value -1
+        pageInfoState.value = pageInfoState.value.copy(idx = newPageIdx)
+
         emptyBmp?.let {ebmp ->
             // create empty page as last page, in this case, shift is always false regardless of UI state.
-            savePageInMain(pageNum.value - 1, false, ebmp)
+            savePageInMain(newPageIdx, false, ebmp)
+            pageBmp = ebmp
         }
-        pageIdxValue.value = pageNum.value-1
     }
 
     private fun gotoFirstPage() {
         ensureSave()
-        pageIdxValue.value = 0
+        pageInfoState.value = PageInfo(0, false)
     }
 
     private fun gotoLastPage() {
         ensureSave()
-        pageIdxValue.value = pageNum.value-1
-        shiftHalf.value = false
+        pageInfoState.value = PageInfo(pageNum.value-1, false)
     }
 
     private fun gotoPrevPage() {
         ensureSave()
-        if (pageIdxValue.value >= 1) {
-            pageIdxValue.value -= 1
+        if (pageInfoState.value.idx >= 1) {
+            pageInfoState.value = pageInfoState.value.copy(idx = pageInfoState.value.idx-1)
         }
     }
 
     private fun gotoNextPage() {
         ensureSave()
-        pageIdxValue.value += 1
-        if (pageIdxValue.value+1 == pageNum.value)
-            shiftHalf.value = false
+        val newPageIdx = pageInfoState.value.idx+1
+        val shiftHalf =  if (newPageIdx+1 == pageNum.value) { false } else { pageInfoState.value.shift }
+        pageInfoState.value = pageInfoState.value.copy(idx = newPageIdx, shift=shiftHalf)
     }
 
     private fun gotoGridPage() {
@@ -283,6 +298,8 @@ class BookActivity : ComponentActivity() {
             startActivity(it)
         }
     }
+
+    var finishListener : ()->Unit = {}
 
     override fun onNewIntent(intent: Intent?) {
         super.onNewIntent(intent)
@@ -348,11 +365,11 @@ class BookActivity : ComponentActivity() {
                                 }
                             }
                             Row(modifier=Modifier.weight(6f), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.End) {
-                                IconToggleButton(checked = shiftHalf.value, onCheckedChange= {
+                                IconToggleButton(checked = pageInfoState.value.shift, onCheckedChange= {
                                     ensureSave()
-                                    shiftHalf.value = it
+                                    pageInfoState.value = pageInfoState.value.copy(shift=it)
                                 }) {
-                                    val iconId = if (shiftHalf.value) R.drawable.baseline_shift_half else R.drawable.outline_shift_half
+                                    val iconId = if (pageInfoState.value.shift) R.drawable.baseline_shift_half else R.drawable.outline_shift_half
                                     Icon(
                                         painter = painterResource(id = iconId),
                                         contentDescription = "Shift Half",
@@ -362,15 +379,15 @@ class BookActivity : ComponentActivity() {
                                 IconButton(onClick= { gotoGridPage() }) {
                                     Icon(painter = painterResource(id = R.drawable.baseline_grid_view), contentDescription="Grid")
                                 }
-                                IconButton(modifier=Modifier.size(24.dp), onClick={ gotoFirstPage() }, enabled= pageIdxValue.value != 0) {
+                                IconButton(modifier=Modifier.size(24.dp), onClick={ gotoFirstPage() }, enabled= !pageInfoState.value.isFirstPage) {
                                     Icon(painter = painterResource(id = R.drawable.outline_first_page), contentDescription = "First Page")
                                 }
-                                IconButton(modifier=Modifier.size(24.dp), onClick={ gotoPrevPage() }, enabled= pageIdxValue.value != 0) {
+                                IconButton(modifier=Modifier.size(24.dp), onClick={ gotoPrevPage() }, enabled= !pageInfoState.value.isFirstPage) {
                                     Icon(painter = painterResource(id = R.drawable.baseline_chevron_left), contentDescription = "Prev Page")
                                 }
-                                val pidx = pageIdxValue.value + 1
+                                val pidx = pageInfoState.value.idx + 1
                                 val pnum = pageNum.value
-                                if (shiftHalf.value)
+                                if (pageInfoState.value.shift)
                                 {
                                     Text("$pidx.5/$pnum")
                                 }
@@ -379,7 +396,7 @@ class BookActivity : ComponentActivity() {
                                     Text("$pidx/$pnum")
                                 }
 
-                                val lastPage = pageIdxValue.value + 1 == pageNum.value
+                                val lastPage = pidx == pageNum.value
                                 IconButton(modifier=Modifier.size(24.dp), onClick={ gotoNextPage() }, enabled=!lastPage) {
                                     Icon(painter = painterResource(id = R.drawable.baseline_chevron_right), contentDescription = "Next Page")
                                 }
@@ -397,6 +414,7 @@ class BookActivity : ComponentActivity() {
                         },
                         navigationIcon = {
                             IconButton(onClick = {
+                                finishListener()
                                 ensureSave()
                                 finish()
                             }) {
@@ -407,7 +425,7 @@ class BookActivity : ComponentActivity() {
                             val initState = initCount.value
                             AndroidView(modifier = Modifier.size(maxWidth, maxHeight),
                                 factory = {context->
-                                    val initBmp = bookIO.loadBitmapOrNull(book, pageIdxValue.value, shiftHalf.value)
+                                    val initBmp = bookIO.loadBitmapOrNull(book, pageInfoState.value)
                                     val bgBmp = bookIO.loadBgOrNull(book)
                                     CanvasBoox(context, initBmp, bgBmp, initialPageIdx).apply {
                                         clipToOutline = true
@@ -419,8 +437,8 @@ class BookActivity : ComponentActivity() {
                                 update = {
                                     it.ensureInit(initState)
                                     it.penOrEraser(!isEraser)
-                                    it.onPageIdx(pageIdxValue.value, shiftHalf.value, bitmapLoader= { idx, shift ->
-                                        bookIO.loadBitmapOrNull(book, idx, shift).also {
+                                    it.onPageIdx(pageInfoState.value, bitmapLoader= { pinfo ->
+                                        bookIO.loadBitmapOrNull(book, pinfo).also {
                                             isDirty = false
                                             bitmapLock.withLock {
                                                 pageBmp = it

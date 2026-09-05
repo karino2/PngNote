@@ -14,6 +14,11 @@ import androidx.core.graphics.createBitmap
 import io.github.karino2.fastfile.FastFile
 import kotlin.collections.plus
 
+data class PageInfo(val idx: Int, val shift: Boolean) {
+    val isFirstPage: Boolean
+        get() = idx == 0
+}
+
 class BookList(val dir: FastFile, val resolver: ContentResolver) {
     companion object {
         private const val LAST_ROOT_DIR_KEY = "last_root_url"
@@ -239,13 +244,16 @@ class BookIO(resolver: ContentResolver) {
     fun loadBgOrNull(book: Book) = book.bgImage?.let { bitmapIO.loadBitmap(it) }
 
     private val bmpFileLock = Any()
+
+    fun loadBitmapOrNull(book: Book, pageInfo: PageInfo) : Bitmap? {
+        return loadBitmapOrNull(book, pageInfo.idx, pageInfo.shift)
+    }
     fun loadBitmapOrNull(book: Book, pageIdx: Int, shiftHalf: Boolean) : Bitmap? {
         synchronized(bmpFileLock) {
             if(!shiftHalf) return book.getPage(pageIdx).let { pageIO.loadBitmapOrNull(it) }
             return betweenPageIO.loadBitmapBetween(book, pageIdx)
         }
     }
-
 
     fun saveBitmap(book: Book, pageIdx: Int, shiftHalf:Boolean, bitmap: Bitmap) {
         synchronized(bmpFileLock) {
