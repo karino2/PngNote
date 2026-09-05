@@ -110,7 +110,9 @@ class BookActivity : ComponentActivity() {
         isDirty = true
         lastWritten = getCurrentMills()
 
-        pageBmp = newBmp
+        bitmapLock.withLock {
+            pageBmp = newBmp
+        }
         lazySave()
     }
 
@@ -425,7 +427,9 @@ class BookActivity : ComponentActivity() {
                                     it.onPageIdx(pageIdxValue.value, shiftHalf.value, bitmapLoader= { idx, shift ->
                                         bookIO.loadBitmapOrNull(book, idx, shift).also {
                                             isDirty = false
-                                            pageBmp = it
+                                            bitmapLock.withLock {
+                                                pageBmp = it
+                                            }
                                         }
                                     })
                                     it.onRestart(restartCount.value)
