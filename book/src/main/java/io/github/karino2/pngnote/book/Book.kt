@@ -238,15 +238,17 @@ class BookIO(resolver: ContentResolver) {
 
     fun loadBgOrNull(book: Book) = book.bgImage?.let { bitmapIO.loadBitmap(it) }
 
+    private val bmpFileLock = Any()
     fun loadBitmapOrNull(book: Book, pageIdx: Int, shiftHalf: Boolean) : Bitmap? {
-        if(!shiftHalf) return book.getPage(pageIdx).let { pageIO.loadBitmapOrNull(it) }
-        return betweenPageIO.loadBitmapBetween(book, pageIdx)
+        synchronized(bmpFileLock) {
+            if(!shiftHalf) return book.getPage(pageIdx).let { pageIO.loadBitmapOrNull(it) }
+            return betweenPageIO.loadBitmapBetween(book, pageIdx)
+        }
     }
 
-    private val saveLock = Any()
 
     fun saveBitmap(book: Book, pageIdx: Int, shiftHalf:Boolean, bitmap: Bitmap) {
-        synchronized(saveLock) {
+        synchronized(bmpFileLock) {
             if (!shiftHalf) {
                 pageIO.saveBitmap(book.getPage(pageIdx), bitmap)
                 return
