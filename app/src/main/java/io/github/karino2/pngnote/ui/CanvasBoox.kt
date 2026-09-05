@@ -10,6 +10,7 @@ import com.onyx.android.sdk.data.note.TouchPoint
 import com.onyx.android.sdk.pen.RawInputCallback
 import com.onyx.android.sdk.pen.TouchHelper
 import com.onyx.android.sdk.pen.data.TouchPointList
+import io.github.karino2.pngnote.book.PageInfo
 import java.util.Date
 import kotlin.math.abs
 
@@ -449,14 +450,15 @@ class CanvasBoox(context: Context, var initialBmp: Bitmap? = null, private val b
     }
 
     private var pageIdx = initialPageIdx
-    fun onPageIdx(idx: Int, shiftHalf:Boolean, bitmapLoader: (Int, Boolean)->Bitmap?) {
-        if(pageIdx == idx && shiftHalf == this.shiftHalf)
+
+    fun onPageIdx(pageInfo: PageInfo, bitmapLoader: (PageInfo)->Bitmap?) {
+        if(pageIdx == pageInfo.idx && pageInfo.shift == this.shiftHalf)
             return
 
-        pageIdx = idx
-        this.shiftHalf = shiftHalf
+        pageIdx = pageInfo.idx
+        this.shiftHalf = pageInfo.shift
 
-        val newbmp = bitmapLoader(idx, shiftHalf)
+        val newbmp = bitmapLoader(pageInfo)
         bitmapBackend.setupNewPage(width, height, newbmp)
 
         syncBackendToSurface()
