@@ -4,17 +4,10 @@ import android.content.Context
 import android.graphics.*
 import android.view.MotionEvent
 import android.view.View
-import java.util.*
-import io.github.karino2.pngnote.BookActivity
-import kotlin.concurrent.withLock
 
 
 class CanvasBoox(context: Context, var initialBmp: Bitmap? = null, private val background: Bitmap?, initialPageIdx:Int  = 0) : View(context) {
     private val bitmapActor = BitmapActor()
-    val bitmap: Bitmap?
-        get() = bitmapActor.bitmap
-    val bmpCanvas: Canvas?
-        get() = bitmapActor.bmpCanvas
 
     private val pencilWidth = 3f
     private val eraserWidth = 30f
@@ -40,17 +33,13 @@ class CanvasBoox(context: Context, var initialBmp: Bitmap? = null, private val b
         strokeWidth = eraserWidth
     }
 
-    private val undoList = UndoList()
-
     private var undoCount = 0
     private var redoCount = 0
 
     fun undo(count : Int) {
         if (undoCount != count) {
             undoCount = count
-            BookActivity.bitmapLock.withLock {
-                bmpCanvas?.let { undoList.undo(it) }
-            }
+            bitmapActor.undo()
 
             refreshAfterUndoRedo()
         }
@@ -59,86 +48,23 @@ class CanvasBoox(context: Context, var initialBmp: Bitmap? = null, private val b
     fun redo(count: Int) {
         if(redoCount != count) {
             redoCount = count
-            BookActivity.bitmapLock.withLock {
-                bmpCanvas?.let { undoList.redo(it) }
-            }
+            bitmapActor.redo()
 
             refreshAfterUndoRedo()
         }
     }
 
-    private fun notifyUndoStateChanged() {
-        undoStateListener(canUndo, canRedo)
-    }
-
     private fun refreshAfterUndoRedo() {
-        bitmap?.let { updateBmpListener(it) }
-        notifyUndoStateChanged()
+        bitmapActor.notifyBitmapUpdate()
+        bitmapActor.notifyUndoStateChanged()
         invalidate()
-    }
-
-    val canUndo: Boolean
-        get() = undoList.canUndo
-
-    val canRedo: Boolean
-        get() = undoList.canRedo
-
-
-
-    private var initCount = 0
-
-    // use for short term temporary only.
-    private val tempRegion = RectF()
-    private val tempRect = Rect()
-    private fun pathBound(path: Path) : Rect {
-        path.computeBounds(tempRegion, false)
-        tempRegion.roundOut(tempRect)
-        widen(tempRect, 5)
-        return tempRect
-    }
-
-    private fun widen(tmpInval: Rect, margin: Int) {
-        val newLeft = (tmpInval.left - margin).coerceAtLeast(0)
-        val newTop = (tmpInval.top - margin).coerceAtLeast(0)
-        val newRight = (tmpInval.right + margin).coerceAtMost(width)
-        val newBottom = (tmpInval.bottom + margin).coerceAtMost(height)
-        tmpInval.set(newLeft, newTop, newRight, newBottom)
     }
 
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
         super.onSizeChanged(w, h, oldw, oldh)
 
-        bitmap?.let { oldbmp ->
-            createNewCanvas(w, h)
-            drawBitmap(oldbmp)
-        } ?: setupNewCanvasBitmap(w, h)
-
-        updateBmpListener(bitmap!!)
-    }
-
-    private fun setupNewCanvasBitmap(w: Int, h: Int) {
-        createNewCanvas(w, h)
-
-        drawBitmap(initialBmp)
+        bitmapActor.resize(w, h, initialBmp)
         initialBmp = null
-    }
-
-    private fun createNewCanvas(w: Int, h: Int) {
-        val bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
-        bmp.eraseColor(Color.WHITE)
-        bitmap = bmp
-        bmpCanvas = Canvas(bmp)
-    }
-
-    private fun drawBitmap(srcBitmap: Bitmap?) {
-        srcBitmap?.let { src ->
-            bmpCanvas.drawBitmap(
-                src,
-                Rect(0, 0, src.width, src.height),
-                Rect(0, 0, this.bitmap!!.width, this.bitmap!!.height),
-                bmpPaint
-            )
-        }
     }
 
     private var downHandled = false
@@ -180,27 +106,8 @@ class CanvasBoox(context: Context, var initialBmp: Bitmap? = null, private val b
                     downHandled = false
                     path.lineTo(x, y)
 
+                    bitmapActor.drawOrErasePathToBitmap(path, currentPaint(), width, height)
 
-                    val region = pathBound(path)
-                    val undo = Bitmap.createBitmap(
-                        bitmap!!,
-                        region.left,
-                        region.top,
-                        region.width(),
-                        region.height()
-                    )
-                    drawPathToCanvas(bmpCanvas, path)
-                    val redo = Bitmap.createBitmap(
-                        bitmap!!,
-                        region.left,
-                        region.top,
-                        region.width(),
-                        region.height()
-                    )
-                    undoList.pushUndoCommand(region.left, region.top, undo, redo)
-
-                    notifyUndoStateChanged()
-                    updateBmpListener(bitmap!!)
                     path.reset()
                     invalidate()
                 }
@@ -209,15 +116,15 @@ class CanvasBoox(context: Context, var initialBmp: Bitmap? = null, private val b
         return super.onTouchEvent(event)
     }
 
-    fun drawPathToCanvas(canvas: Canvas, path: Path) {
-        val paint = if(isPencil) pathPaint else eraserPaint
-        canvas.drawPath(path, paint)
+    private fun currentPaint(): Paint {
+        val paint = if (isPencil) pathPaint else eraserPaint
+        return paint
     }
 
     override fun onDraw(canvas: Canvas) {
         canvas.drawColor(Color.WHITE)
-        canvas.drawBitmap(bitmap!!, 0f, 0f, bmpPaint)
-        drawPathToCanvas(canvas, path)
+        canvas.drawBitmap(bitmapActor.bitmap!!, 0f, 0f, bmpPaint)
+        canvas.drawPath(path, currentPaint())
     }
 
     private var isPencil = true
@@ -256,29 +163,25 @@ class CanvasBoox(context: Context, var initialBmp: Bitmap? = null, private val b
         pageIdx = idx
 
         val newbmp = bitmapLoader(idx)
+        bitmapActor.setupNewPage(width, height, newbmp)
 
-        bitmap!!.eraseColor(Color.WHITE)
-        newbmp?.let {
-            bmpCanvas.drawBitmap(it,
-                Rect(0, 0, it.width, it.height),
-                Rect(0, 0, width, height),
-                bmpPaint)
-        }
-        undoList.clear()
-        notifyUndoStateChanged()
         invalidate()
     }
 
-    private var updateBmpListener: (bmp: Bitmap) -> Unit = {}
-
     fun setOnUpdateListener(updateBmpListener: (bmp: Bitmap) -> Unit) {
-        this.updateBmpListener = updateBmpListener
+        bitmapActor.updateBmpListener = updateBmpListener
     }
 
-    private var undoStateListener: (undo:Boolean, redo:Boolean) -> Unit = { _, _ ->}
     fun setOnUndoStateListener(undoStateListener: (undo:Boolean, redo:Boolean) -> Unit) {
-        this.undoStateListener = undoStateListener
+        bitmapActor.undoStateListener = undoStateListener
     }
 
 
+    /* BOOX のrawrenderingと同じコードにするためのダミー実装 */
+    fun firstInit() {}
+    fun ensureInit(s:Int) {}
+    fun onRestart(count: Int) {}
+    fun onTryRawDrawing(count: Int) {}
+    fun onEnsureClose(count: Int) {}
+    fun refreshUI(count: Int) {}
 }
