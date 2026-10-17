@@ -122,7 +122,11 @@ class CanvasBoox(context: Context, var initialBmp: Bitmap? = null, private val b
 
     override fun onDraw(canvas: Canvas) {
         canvas.drawColor(Color.WHITE)
-        canvas.drawBitmap(bitmapBackend.bitmap!!, 0f, 0f, bmpPaint)
+        val paint = background?.let {
+            canvas.drawBitmap(it, 0f, 0f, bmpPaint)
+            bmpPaintWithBG
+        } ?: bmpPaint
+        canvas.drawBitmap(bitmapBackend.bitmap!!, 0f, 0f, paint)
         canvas.drawPath(path, currentPaint())
     }
 
