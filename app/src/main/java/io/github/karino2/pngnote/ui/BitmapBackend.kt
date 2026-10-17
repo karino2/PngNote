@@ -20,11 +20,11 @@ class BitmapBackend {
 
     private val undoList = UndoList()
 
-    var updateBmpListener: (bmp: Bitmap) -> Unit = {}
+    var updateBmpListener: () -> Unit = {}
     var undoStateListener: (undo: Boolean, redo: Boolean) -> Unit = { _, _ -> }
 
     fun notifyBitmapUpdate() {
-        bitmap?.let { updateBmpListener(it) }
+        bitmap?.let { updateBmpListener() }
     }
 
     fun notifyUndoStateChanged() {
@@ -51,6 +51,7 @@ class BitmapBackend {
                 undoList.undo(canvas)
             }
         }
+        notifyUndoRedo()
     }
 
     fun redo() {
@@ -59,6 +60,7 @@ class BitmapBackend {
                 undoList.redo(canvas)
             }
         }
+        notifyUndoRedo()
     }
 
     private val tempRegion = RectF()
@@ -106,6 +108,10 @@ class BitmapBackend {
         }
         pushUndoCommand(region.left, region.top, undo, redo)
 
+        notifyUndoRedo()
+    }
+
+    private fun notifyUndoRedo() {
         notifyBitmapUpdate()
         notifyUndoStateChanged()
     }
@@ -140,28 +146,9 @@ class BitmapBackend {
                 )
             }
         }
-        notifyBitmapUpdate()
     }
 
     private val bmpPaint = Paint(Paint.DITHER_FLAG)
-
-    fun setupNewPage(width: Int, height: Int, newBmp: Bitmap?) {
-        val (offscreenBmp, canvas) = ensureBitmap(width, height)
-        BookActivity.bitmapLock.withLock {
-            offscreenBmp.eraseColor(Color.WHITE)
-            newBmp?.let {
-                canvas.drawBitmap(
-                    it,
-                    Rect(0, 0, it.width, it.height),
-                    Rect(0, 0, width, height),
-                    bmpPaint
-                )
-            }
-        }
-        clearUndo()
-        notifyUndoStateChanged()
-        notifyBitmapUpdate()
-    }
 
     fun resize(width: Int, height: Int, initialBmp: Bitmap?) {
         bitmap?.let { oldbmp ->
@@ -174,7 +161,18 @@ class BitmapBackend {
                     bmpPaint
                 )
             }
-            notifyBitmapUpdate()
         } ?: return cleanInit(width, height, initialBmp)
+    }
+
+    fun setupNewBitmap(newBmp: Bitmap) {
+        clearUndo()
+        ensureBitmap(newBmp.width, newBmp.height).let { (_, canvas) ->
+            canvas.drawBitmap(newBmp, 0f, 0f, bmpPaint)
+        }
+    }
+
+    fun clear() {
+        clearUndo()
+        bitmap?.eraseColor(Color.WHITE)
     }
 }

@@ -1,5 +1,6 @@
 package io.github.karino2.pngnote.ui
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.*
 import android.view.MotionEvent
@@ -7,9 +8,7 @@ import android.view.View
 import io.github.karino2.pngnote.book.PageInfo
 
 
-class CanvasBoox(context: Context, var initialBmp: Bitmap? = null, private val background: Bitmap?, initialPageIdx:Int  = 0) : View(context) {
-    private val backend = BitmapBackend()
-
+class CanvasBoox(context: Context, val backend: BitmapBackend, var initialBmp: Bitmap? = null, private val background: Bitmap?, initialPageIdx:Int  = 0) : View(context) {
     private val pencilWidth = 3f
     private val eraserWidth = 30f
 
@@ -41,7 +40,7 @@ class CanvasBoox(context: Context, var initialBmp: Bitmap? = null, private val b
         if (undoCount != count) {
             undoCount = count
             backend.undo()
-            refreshAfterUndoRedo()
+            invalidate()
         }
     }
 
@@ -49,14 +48,8 @@ class CanvasBoox(context: Context, var initialBmp: Bitmap? = null, private val b
         if(redoCount != count) {
             redoCount = count
             backend.redo()
-            refreshAfterUndoRedo()
+            invalidate()
         }
-    }
-
-    private fun refreshAfterUndoRedo() {
-        backend.notifyBitmapUpdate()
-        backend.notifyUndoStateChanged()
-        invalidate()
     }
 
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
@@ -74,6 +67,7 @@ class CanvasBoox(context: Context, var initialBmp: Bitmap? = null, private val b
     private val path = Path()
 
 
+    @SuppressLint("ClickableViewAccessibility")
     override fun onTouchEvent(event: MotionEvent): Boolean {
         val x = event.x
         val y = event.y
@@ -159,28 +153,10 @@ class CanvasBoox(context: Context, var initialBmp: Bitmap? = null, private val b
         }
     }
 
-    private var pageIdx = initialPageIdx
-    fun onPageIdx(pageInfo: PageInfo, bitmapLoader: (PageInfo)->Bitmap?) {
-        if(pageIdx == pageInfo.idx && pageInfo.shift == this.shiftHalf)
-            return
-
-        pageIdx = pageInfo.idx
+    fun onPageIdx(pageInfo: PageInfo) {
         this.shiftHalf = pageInfo.shift
-
-        val newbmp = bitmapLoader(pageInfo)
-        backend.setupNewPage(width, height, newbmp)
-
         invalidate()
     }
-
-    fun setOnUpdateListener(updateBmpListener: (bmp: Bitmap) -> Unit) {
-        backend.updateBmpListener = updateBmpListener
-    }
-
-    fun setOnUndoStateListener(undoStateListener: (undo:Boolean, redo:Boolean) -> Unit) {
-        backend.undoStateListener = undoStateListener
-    }
-
 
     /* BOOX のrawrenderingと同じコードにするためのダミー実装 */
     fun firstInit() {}

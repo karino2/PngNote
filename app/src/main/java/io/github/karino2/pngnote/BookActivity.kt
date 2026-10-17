@@ -47,6 +47,7 @@ import io.github.karino2.fastfile.FastFile
 import io.github.karino2.pngnote.book.Book
 import io.github.karino2.pngnote.book.BookIO
 import io.github.karino2.pngnote.book.PageInfo
+import io.github.karino2.pngnote.ui.BitmapBackend
 import io.github.karino2.pngnote.ui.CanvasBoox
 import io.github.karino2.pngnote.ui.theme.PngNoteTheme
 import kotlinx.coroutines.Dispatchers
@@ -87,14 +88,17 @@ class BookActivity : ComponentActivity() {
         }
     }
 
+    private val backend = BitmapBackend().apply {
+        updateBmpListener = { onBitmapUpdate() }
+        undoStateListener = { undo, redo -> onUndoStateChanged(undo, redo) }
+    }
+
     private fun showMessage(msg: String) = Toast.makeText(this, msg, Toast.LENGTH_LONG).show()
 
 
     private val initCount = mutableStateOf(0)
 
     private val pageInfoState = mutableStateOf(PageInfo(initialPageIdx, false))
-
-    private var pageBmp: Bitmap? = null
 
     private val pageNum = mutableStateOf(0)
     private val restartCount = mutableStateOf(0)
@@ -116,23 +120,29 @@ class BookActivity : ComponentActivity() {
     private fun updatePageInfo(newpinfo: PageInfo) {
         if(pageInfoState.value == newpinfo)
             return
+
+        ensureSave()
         pageInfoState.value = newpinfo
+        isDirty = false
+        val bmp = bookIO.loadBitmapOrNull(book, newpinfo) ?: return backend.clear()
+        backend.setupNewBitmap(bmp)
     }
 
-    private fun notifyBitmapUpdate(newBmp : Bitmap) {
+    private fun onBitmapUpdate() {
+        ensureSave()
+
         isDirty = true
         lastWritten = getCurrentMills()
 
         bitmapLock.withLock {
             lastUpdatedPageInfo = pageInfoState.value.copy()
-            pageBmp = newBmp
         }
         lazySave()
     }
 
 
     private var canUndo = false
-    private fun notifyUndoStateChanged(canUndo1: Boolean, canRedo1: Boolean) {
+    private fun onUndoStateChanged(canUndo1: Boolean, canRedo1: Boolean) {
         val needRefresh = (canRedo.value != canRedo1)
 
         canUndo = canUndo1
@@ -153,8 +163,8 @@ class BookActivity : ComponentActivity() {
     }
 
     // same as savePage, but blocking in Main thread.
-    private fun savePageDataInMain(pageInfo: PageInfo, pageBmp: Bitmap?) {
-        savePageInMain(pageInfo.idx, pageInfo.shift, pageBmp!!)
+    private fun saveBackendToPageInMain(pageInfo: PageInfo) {
+        savePageInMain(pageInfo.idx, pageInfo.shift, backend.bitmap!!)
     }
 
     private fun savePageInMain(pageIdx: Int, shift: Boolean, pageBmp: Bitmap) {
@@ -176,7 +186,7 @@ class BookActivity : ComponentActivity() {
 
                     isDirty = false
                     bitmapLock.withLock {
-                        val bmp = pageBmp!!
+                        val bmp = backend.bitmap!!
                         Pair(lastUpdatedPageInfo, bmp.copy(bmp.config, false))
                     }
                 }
@@ -190,7 +200,7 @@ class BookActivity : ComponentActivity() {
     private fun ensureSave() {
         if (isDirty) {
             isDirty = false
-            savePageDataInMain(pageInfoState.value, pageBmp)
+            saveBackendToPageInMain(pageInfoState.value)
         }
     }
 
@@ -224,13 +234,11 @@ class BookActivity : ComponentActivity() {
     private fun share() {
         closeCount.value += 1
         ensureSave()
-        if (pageBmp == null) {
-            return
-        }
+        val bitmap = backend.bitmap ?: return
         val path = File.createTempFile("share", ".png", cacheDir)
         path.outputStream().use {
             bitmapLock.withLock {
-                pageBmp!!.compress(Bitmap.CompressFormat.PNG, 100, it)
+                bitmap.compress(Bitmap.CompressFormat.PNG, 100, it)
             }
             it.flush()
         }
@@ -253,7 +261,7 @@ class BookActivity : ComponentActivity() {
     private fun addNewPageAndGo() {
         ensureSave()
         if (emptyBmp == null) {
-            pageBmp?.let { pbmp ->
+            backend.bitmap?.let { pbmp ->
                 emptyBmp = Bitmap.createBitmap(pbmp.width, pbmp.height, Bitmap.Config.ARGB_8888).apply {
                     eraseColor(Color.WHITE)
                 }
@@ -263,15 +271,13 @@ class BookActivity : ComponentActivity() {
 
         _book = book.addPage()
 
-
         val newPageIdx = pageNum.value -1
-        updatePageInfo(pageInfoState.value.copy(idx = newPageIdx))
-
         emptyBmp?.let {ebmp ->
             // create empty page as last page, in this case, shift is always false regardless of UI state.
             savePageInMain(newPageIdx, false, ebmp)
-            pageBmp = ebmp
         }
+
+        updatePageInfo(pageInfoState.value.copy(idx = newPageIdx))
     }
 
     private fun gotoFirstPage() {
@@ -433,24 +439,16 @@ class BookActivity : ComponentActivity() {
                                 factory = {context->
                                     val initBmp = bookIO.loadBitmapOrNull(book, pageInfoState.value)
                                     val bgBmp = bookIO.loadBgOrNull(book)
-                                    CanvasBoox(context, initBmp, bgBmp, initialPageIdx).apply {
+                                    initBmp?.let { backend.setupNewBitmap(it) }
+                                    CanvasBoox(context, backend,initBmp, bgBmp, initialPageIdx).apply {
                                         clipToOutline = true
                                         firstInit()
-                                        setOnUpdateListener { notifyBitmapUpdate(it) }
-                                        setOnUndoStateListener { undo, redo-> notifyUndoStateChanged(undo, redo) }
                                     }
                                 },
                                 update = {
                                     it.ensureInit(initState)
                                     it.penOrEraser(!isEraser)
-                                    it.onPageIdx(pageInfoState.value, bitmapLoader= { pinfo ->
-                                        bookIO.loadBitmapOrNull(book, pinfo).also {
-                                            isDirty = false
-                                            bitmapLock.withLock {
-                                                pageBmp = it
-                                            }
-                                        }
-                                    })
+                                    it.onPageIdx(pageInfoState.value)
                                     it.onRestart(restartCount.value)
                                     it.onEnsureClose(closeCount.value)
                                     it.onTryRawDrawing(tryRawDrawing.value)
