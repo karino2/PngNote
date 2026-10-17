@@ -8,7 +8,7 @@ import io.github.karino2.pngnote.book.PageInfo
 
 
 class CanvasBoox(context: Context, var initialBmp: Bitmap? = null, private val background: Bitmap?, initialPageIdx:Int  = 0) : View(context) {
-    private val bitmapBackend = BitmapBackend()
+    private val backend = BitmapBackend()
 
     private val pencilWidth = 3f
     private val eraserWidth = 30f
@@ -40,7 +40,7 @@ class CanvasBoox(context: Context, var initialBmp: Bitmap? = null, private val b
     fun undo(count : Int) {
         if (undoCount != count) {
             undoCount = count
-            bitmapBackend.undo()
+            backend.undo()
             refreshAfterUndoRedo()
         }
     }
@@ -48,21 +48,21 @@ class CanvasBoox(context: Context, var initialBmp: Bitmap? = null, private val b
     fun redo(count: Int) {
         if(redoCount != count) {
             redoCount = count
-            bitmapBackend.redo()
+            backend.redo()
             refreshAfterUndoRedo()
         }
     }
 
     private fun refreshAfterUndoRedo() {
-        bitmapBackend.notifyBitmapUpdate()
-        bitmapBackend.notifyUndoStateChanged()
+        backend.notifyBitmapUpdate()
+        backend.notifyUndoStateChanged()
         invalidate()
     }
 
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
         super.onSizeChanged(w, h, oldw, oldh)
 
-        bitmapBackend.resize(w, h, initialBmp)
+        backend.resize(w, h, initialBmp)
         initialBmp = null
     }
 
@@ -105,7 +105,7 @@ class CanvasBoox(context: Context, var initialBmp: Bitmap? = null, private val b
                     downHandled = false
                     path.lineTo(x, y)
 
-                    bitmapBackend.drawOrErasePathToBitmap(path, currentPaint(), width, height)
+                    backend.drawOrErasePathToBitmap(path, currentPaint(), width, height)
 
                     path.reset()
                     invalidate()
@@ -126,7 +126,7 @@ class CanvasBoox(context: Context, var initialBmp: Bitmap? = null, private val b
             canvas.drawBitmap(it, 0f, 0f, bmpPaint)
             bmpPaintWithBG
         } ?: bmpPaint
-        canvas.drawBitmap(bitmapBackend.bitmap!!, 0f, 0f, paint)
+        canvas.drawBitmap(backend.bitmap!!, 0f, 0f, paint)
         canvas.drawPath(path, currentPaint())
     }
 
@@ -168,17 +168,17 @@ class CanvasBoox(context: Context, var initialBmp: Bitmap? = null, private val b
         this.shiftHalf = pageInfo.shift
 
         val newbmp = bitmapLoader(pageInfo)
-        bitmapBackend.setupNewPage(width, height, newbmp)
+        backend.setupNewPage(width, height, newbmp)
 
         invalidate()
     }
 
     fun setOnUpdateListener(updateBmpListener: (bmp: Bitmap) -> Unit) {
-        bitmapBackend.updateBmpListener = updateBmpListener
+        backend.updateBmpListener = updateBmpListener
     }
 
     fun setOnUndoStateListener(undoStateListener: (undo:Boolean, redo:Boolean) -> Unit) {
-        bitmapBackend.undoStateListener = undoStateListener
+        backend.undoStateListener = undoStateListener
     }
 
 
