@@ -113,6 +113,12 @@ class BookActivity : ComponentActivity() {
 
     private var lastUpdatedPageInfo = pageInfoState.value.copy()
 
+    private fun updatePageInfo(newpinfo: PageInfo) {
+        if(pageInfoState.value == newpinfo)
+            return
+        pageInfoState.value = newpinfo
+    }
+
     private fun notifyBitmapUpdate(newBmp : Bitmap) {
         isDirty = true
         lastWritten = getCurrentMills()
@@ -259,7 +265,7 @@ class BookActivity : ComponentActivity() {
 
 
         val newPageIdx = pageNum.value -1
-        pageInfoState.value = pageInfoState.value.copy(idx = newPageIdx)
+        updatePageInfo(pageInfoState.value.copy(idx = newPageIdx))
 
         emptyBmp?.let {ebmp ->
             // create empty page as last page, in this case, shift is always false regardless of UI state.
@@ -270,18 +276,18 @@ class BookActivity : ComponentActivity() {
 
     private fun gotoFirstPage() {
         ensureSave()
-        pageInfoState.value = PageInfo(0, false)
+        updatePageInfo(PageInfo(0, false))
     }
 
     private fun gotoLastPage() {
         ensureSave()
-        pageInfoState.value = PageInfo(pageNum.value-1, false)
+        updatePageInfo(PageInfo(pageNum.value-1, false))
     }
 
     private fun gotoPrevPage() {
         ensureSave()
         if (pageInfoState.value.idx >= 1) {
-            pageInfoState.value = pageInfoState.value.copy(idx = pageInfoState.value.idx-1)
+            updatePageInfo(pageInfoState.value.copy(idx = pageInfoState.value.idx-1))
         }
     }
 
@@ -289,7 +295,7 @@ class BookActivity : ComponentActivity() {
         ensureSave()
         val newPageIdx = pageInfoState.value.idx+1
         val shiftHalf =  if (newPageIdx+1 == pageNum.value) { false } else { pageInfoState.value.shift }
-        pageInfoState.value = pageInfoState.value.copy(idx = newPageIdx, shift=shiftHalf)
+        updatePageInfo(pageInfoState.value.copy(idx = newPageIdx, shift=shiftHalf))
     }
 
     private fun gotoGridPage() {
@@ -367,7 +373,7 @@ class BookActivity : ComponentActivity() {
                             Row(modifier=Modifier.weight(6f), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.End) {
                                 IconToggleButton(checked = pageInfoState.value.shift, onCheckedChange= {
                                     ensureSave()
-                                    pageInfoState.value = pageInfoState.value.copy(shift=it)
+                                    updatePageInfo(pageInfoState.value.copy(shift=it))
                                 }) {
                                     val iconId = if (pageInfoState.value.shift) R.drawable.baseline_shift_half else R.drawable.outline_shift_half
                                     Icon(
